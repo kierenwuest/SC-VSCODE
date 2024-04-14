@@ -1,10 +1,18 @@
 # sc-vsc-webdev README
 
-This is the README for your extension "sc-vsc-webdev". After writing up a brief description, we recommend including the following sections.
+A VSCode extension tailored specifically to enhance the development workflow for StoreConnect CMS themes and website components. This extension will effectively bridge the gap between local development and Salesforce data management by synchronizing changes in VSCode directly to Salesforce records. Below, I'll outline some key technical considerations and steps to get started with building this extension.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+1. **Authentication**: Managing Salesforce authentication securely, especially when working with multiple environments (e.g., development, staging, production).
+
+2. **Mapping Files to Salesforce Records**: The ability to configure and store mappings between local files and Salesforce records (Object, Id, Field).
+
+3. **Real-Time Synchronization**: Listening for file save events and updating the corresponding Salesforce record immediately.
+
+4. **User Interface in VSCode**: Creating a user-friendly interface within VSCode, including clickable options in the footer bar, command palette actions, and indicators (e.g., icons) for sync status.
+
+5. **Configuration and State Management**: Handling settings for each project, such as authentication for directories, toggling sync on/off, and maintaining these settings persistently.
 
 For example if there is an image subfolder under your extension project workspace:
 
@@ -14,7 +22,17 @@ For example if there is an image subfolder under your extension project workspac
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- A VSCode extension that works with the web development aspects of the StoreConnect application on salesforce.
+- StoreConnect has CMS capabilities which render front end website code from data stored in a salesforce org.
+  - For example a Style Block record will have an Object, Id and a Field where CSS text content is stored. 
+  - This field value is subsequently used by StoreConeect to produce the css code on the site attached to salesforce. 
+  - Ultimately there are many records that hold web code and the scope of this project will manage records an Object, Id and a Field of content
+- This extension will associate a web file in vscode such as *.css *.html *.liquid *.js to a salesforce record of an Object, Id and a content Field
+- The purpose of this extension is so that a StoreConnect CMS website or Theme can be worked on in VSCode editor and saves to the web project files will updated to the declared salesfooce records on save.
+- The usability of this extension will have a "SC-WebDev" click option in the VSCode lower right footer bar that will have the following command pallet shortcut options per project file
+  - Set Object, Field and Id (this will declare these parameters for the given file)
+  - AuthFolder (an option which authenitcates a direcotry and sun-directoris to a specific salesforce org)
+  - Sync On/Off (a toggle which flags the file to be updated with the record in the salesfooce org on save) a green or red icon on the file woul dbe good to display here
 
 ## Extension Settings
 

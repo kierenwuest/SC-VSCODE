@@ -1,8 +1,9 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { authenticate } from './commands/authenticate';
 
-// This method is called when your extension is activated
+/* // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
@@ -20,7 +21,50 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	context.subscriptions.push(disposable);
+} */
+
+export function activate(context: vscode.ExtensionContext) {
+	let disposable = vscode.commands.registerCommand('extension.authenticate', () => {
+			authenticate().then(() => {
+					vscode.window.showInformationMessage('Authentication Successful!');
+			}).catch(err => {
+					vscode.window.showErrorMessage('Authentication Failed: ' + err.message);
+			});
+	});
+
+	context.subscriptions.push(disposable);
 }
+
+// Function to read configuration
+function getFileMappings() {
+  const config = vscode.workspace.getConfiguration('storeConnect');
+  const fileMappings = config.get('fileMappings');
+  return fileMappings;
+}
+
+// Function to update or add a new mapping
+function addFileMapping(mapping) {
+  const config = vscode.workspace.getConfiguration('storeConnect');
+  let fileMappings = config.get('fileMappings', []);
+  fileMappings.push(mapping);
+  config.update('fileMappings', fileMappings, vscode.ConfigurationTarget.Workspace);
+}
+
+// Example usage of addFileMapping
+addFileMapping({
+  localPath: 'path/to/file.css',
+  salesforceObject: 'CustomObject__c',
+  salesforceField: 'Content__c',
+  salesforceRecordId: 'a0X1I00000XXXXXUAW'
+});
+
+vscode.workspace.onDidChangeConfiguration(event => {
+  if (event.affectsConfiguration('storeConnect.fileMappings')) {
+    const updatedMappings = getFileMappings();
+    // Handle the updated mappings, such as re-syncing files
+    console.log('Configurations updated:', updatedMappings);
+  }
+});
 
 // This method is called when your extension is deactivated
 export function deactivate() {}

@@ -16,18 +16,34 @@ A VSCode extension tailored specifically to enhance the development workflow for
 
 ### Steps to Develop the Extension:
 
-#### Step 1: Setup Your Development Environment
+#### Done ! Step 1: Setup Your Development Environment
 - Install **Node.js** and **npm**.
 - Install **Yeoman** and the **VSCode Extension Generator** to scaffold your project:
   ```bash
   npm install -g yo generator-code
   ```
 - Run `yo code` to create your extension structure.
+- What type of extension do you want to create? New Extension (TypeScript)
+- What's the name of your extension? StoreConnect VSC WebDev
+- What's the identifier of your extension? sc-vsc-webdev
+- Initialize a git repository? NoOk next sep
+- Bundle the source code with webpack? Yes
+- Which package manager to use? npm
+
+
 
 #### Step 2: Define Extension Capabilities
 - Implement the logic to **authenticate** with Salesforce, possibly using OAuth and storing tokens securely using VSCode's secrets API.
 - Create a **configuration storage mechanism** in VSCode to store mappings between files and Salesforce records.
 - Use the **VSCode API** to add UI elements in the footer bar and to handle file events.
+When implementing OAuth in your VSCode extension, ensure you handle the authentication flow securely, possibly opening a browser for the user to log in and capturing the redirect URI through a local server. Store tokens securely using the VSCode secrets API to maintain user data security.
+
+Consumer Key	
+`3MVG929eOx29turFQ0fXnYkUTlvZxTNM0iGjQOdLAhdGQLo92.w4snZRv12FP6jejeY11NxhdX7hXndaab0ac`   
+Consumer Secret	
+`E53D60D015FE1C4DA44B4BA6382FDA866F76151A6A00550BDBC4EC65B690E6DD`
+
+This setup will provide your extension with the necessary permissions to update records in Salesforce while keeping the security and usability in focus.
 
 #### Step 3: Implement Command Palette Actions
 - **Set Object, Field, and Id**: This command will open a UI form or input box to set or update mappings for the current file.
