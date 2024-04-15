@@ -1,10 +1,19 @@
 import * as vscode from 'vscode';
 import { exec } from 'child_process';
+import * as path from 'path';
+import { log, showError, showInfo } from '../outputs';
+
+interface Mapping {
+    localPath: string;
+    salesforceObject: string;
+    salesforceField: string;
+    salesforceRecordId: string;
+}
 
 export async function linkAndSync() {
     const input = await vscode.window.showInputBox({ prompt: 'Enter configuration as [Object].[Field]:[RecordID]' });
     if (!input) {
-        vscode.window.showErrorMessage("Input was cancelled or empty.");
+        showError("Input was cancelled or empty.");
         return;
     }
 
@@ -12,62 +21,89 @@ export async function linkAndSync() {
     const match = input.match(pattern);
 
     if (!match) {
-        vscode.window.showErrorMessage("Input format is incorrect. Please use the format [Object].[Field]:[RecordID]");
+        showError("Input format is incorrect. Please use the format [Object].[Field]:[RecordID]");
         return;
     }
 
     const [_, salesforceObject, salesforceField, salesforceRecordId] = match;
+    const activeEditor = vscode.window.activeTextEditor;
 
-    if (salesforceObject && salesforceField && salesforceRecordId) {
+    if (activeEditor && salesforceObject && salesforceField && salesforceRecordId) {
         const config = vscode.workspace.getConfiguration('storeConnect');
-        let existingMappings = config.get('fileMappings', []) as Array<{ salesforceObject: string, salesforceField: string, salesforceRecordId: string }>;
-        const newMapping = { salesforceObject, salesforceField, salesforceRecordId };
+        let existingMappings = config.get<Mapping[]>('fileMappings', []);
+        
+        const newMapping: Mapping = {
+            localPath: activeEditor.document.fileName,
+            salesforceObject,
+            salesforceField,
+            salesforceRecordId
+        };
+        
         existingMappings.push(newMapping);
         await config.update('fileMappings', existingMappings, vscode.ConfigurationTarget.Workspace);
-        vscode.window.showInformationMessage("Salesforce link and sync configuration saved.");
+        showInfo("Salesforce link and sync configuration saved.");
         
         attachSaveListener(newMapping);
     } else {
-        vscode.window.showErrorMessage("All components must be provided in the format [Object].[Field]:[RecordID].");
+        showError("All components must be provided in the format [Object].[Field]:[RecordID], and a file must be open.");
     }
 }
 
-function attachSaveListener(mapping: { salesforceObject: string; salesforceField: string; salesforceRecordId: string }) {
-    const activeEditor = vscode.window.activeTextEditor;
-    if (activeEditor) {
-        const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.workspace.getWorkspaceFolder(activeEditor.document.uri)!, activeEditor.document.fileName));
-        watcher.onDidChange(uri => {
-            updateSalesforceRecord(mapping, uri);
-        });
+let activeWatchers = new Map<string, vscode.Disposable>();
+
+function attachSaveListener(mapping: Mapping) {
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(mapping.localPath));
+    if (!workspaceFolder) {
+        showError("Workspace folder not found for the given file path.");
+        return;
     }
+
+    const pattern = new vscode.RelativePattern(workspaceFolder, '**/' + path.basename(mapping.localPath));
+    const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+
+    watcher.onDidChange(uri => {
+        log(`File Changed: ${uri.fsPath}`);
+        updateSalesforceRecord(mapping, uri);
+    });
+    watcher.onDidCreate(uri => {
+        log(`File Created: ${uri.fsPath}`);
+        updateSalesforceRecord(mapping, uri);
+    });
+    watcher.onDidDelete(uri => {
+        log(`File Deleted: ${uri.fsPath}`);
+        activeWatchers.get(mapping.localPath)?.dispose(); 
+        activeWatchers.delete(mapping.localPath);
+    });
+
+    if (activeWatchers.has(mapping.localPath)) {
+        activeWatchers.get(mapping.localPath)?.dispose();
+    }
+    activeWatchers.set(mapping.localPath, watcher);
 }
 
-function updateSalesforceRecord(mapping: { salesforceObject: string; salesforceField: string; salesforceRecordId: string }, uri: vscode.Uri) {
+function updateSalesforceRecord(mapping: Mapping, uri: vscode.Uri) {
     vscode.workspace.openTextDocument(uri).then(doc => {
-        let content = doc.getText();
+        const content = doc.getText();
         const updateCommand = `sfdx force:data:record:update -s ${mapping.salesforceObject} -i ${mapping.salesforceRecordId} -v "${mapping.salesforceField}='${content.replace(/'/g, "\\'")}'" --json`;
 
         exec(updateCommand, (error, stdout, stderr) => {
             if (error) {
-                console.error(`Update error: ${error}`);
-                vscode.window.showErrorMessage(`Failed to update Salesforce record: ${error.message}`);
+                showError(`Update error: ${error.message}`);
                 return;
             }
             if (stderr) {
-                console.error(`Error updating Salesforce: ${stderr}`);
-                vscode.window.showErrorMessage(`Error during Salesforce update: ${stderr}`);
+                showError(`Error during Salesforce update: ${stderr}`);
                 return;
             }
             try {
                 const response = JSON.parse(stdout);
                 if (response.status === 0) {
-                    vscode.window.showInformationMessage('Salesforce record updated successfully.');
+                    showInfo('Salesforce record updated successfully.');
                 } else {
-                    vscode.window.showErrorMessage(`Failed to update Salesforce record: ${response.message}`);
+                    showError(`Failed to update record: ${response.message}`);
                 }
-            } catch (parseError) {
-                console.error(`Error parsing Salesforce response: ${parseError}`);
-                vscode.window.showErrorMessage('Error parsing Salesforce response.');
+            } catch (e) {
+                showError('Error parsing Salesforce response.');
             }
         });
     });

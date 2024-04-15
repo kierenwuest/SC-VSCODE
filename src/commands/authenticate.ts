@@ -1,22 +1,24 @@
 import * as vscode from 'vscode';
 import { exec } from 'child_process';
+import { log, showError, showInfo } from '../outputs';
 
 export function authenticate() {
-    // Command to authenticate using Salesforce CLI
     const command = 'sfdx force:auth:web:login -a vscodeOrg -r https://login.salesforce.com';
-
     exec(command, (error, stdout, stderr) => {
         if (error) {
-            console.error(`Error: ${error.message}`);
-            vscode.window.showErrorMessage('Authentication failed. Please ensure Salesforce CLI is installed.');
+            showError(`Authentication failed: ${error.message}`);
             return;
         }
-        if (stderr) {
-            console.error(`Error: ${stderr}`);
-            vscode.window.showErrorMessage('Error during authentication. Check the terminal for more information.');
+        if (stderr && stderr.trim().length > 0) {
+            showError(`Authentication process reported an issue: ${stderr}`);
             return;
         }
-        vscode.window.showInformationMessage('Authenticated successfully. Org alias set to "vscodeOrg".');
-        console.log(stdout);  // Output the result of the CLI command
+        if (stdout.includes("Successfully authorized")) {
+            showInfo('Authenticated successfully. Org alias set to "vscodeOrg".');
+        } else {
+            showError('Authentication was not successful. Please check the output for more information.');
+        }
+        log(`STDOUT: ${stdout}`);
+        log(`STDERR: ${stderr}`);
     });
 }
