@@ -1,6 +1,8 @@
 # Specfic files
 Design.md
+
 CHANGELOG.md
+
 vsc-extension-quickstart.md
 
 ## Ignore Visual Studio temporary files, build results, and
@@ -10,7 +12,7 @@ vsc-extension-quickstart.md
 
 # User-specific files
 *.rsuser
-*.suo
+*.suogit
 *.user
 *.userosscache
 *.sln.docstates
