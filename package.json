@@ -49,28 +49,33 @@
     "configuration": {
       "title": "StoreConnect Settings",
       "properties": {
+            "storeConnect.orgAlias": {
+                "type": "string",
+                "default": "",
+                "description": "The Salesforce organization alias used for authentication."
+            },
         "storeConnect.fileMappings": {
           "type": "array",
           "default": [],
-          "description": "Maps local files to Salesforce records",
+          "description": "Maps local files to Salesforce records.",
           "items": {
             "type": "object",
             "properties": {
               "localPath": {
                 "type": "string",
-                "description": "The path to the local file"
+                "description": "The path to the local file."
               },
               "salesforceObject": {
                 "type": "string",
-                "description": "Salesforce object type (e.g., Account, CustomObject__c)"
+                "description": "Salesforce object type (e.g., Account, CustomObject__c)."
               },
               "salesforceField": {
                 "type": "string",
-                "description": "The field in the Salesforce object to sync data with"
+                "description": "The field in the Salesforce object to sync data with."
               },
               "salesforceRecordId": {
                 "type": "string",
-                "description": "The Salesforce record ID for synchronization"
+                "description": "The Salesforce record ID for synchronization."
               }
             },
             "required": [
