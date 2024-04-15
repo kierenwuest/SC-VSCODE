@@ -6,12 +6,10 @@
   "engines": {
     "vscode": "^1.88.0"
   },
-  "categories": [
-    "Other"
-  ],
+  "categories": ["Other"],
   "activationEvents": [
-    "onCommand:sc-vsc-webdev.helloWorld",
-    "onCommand:extension.authenticate"
+    "onCommand:sc-vsc-webdev.authenticate",
+    "onCommand:sc-vsc-webdev.linkAndSync"
   ],
   "main": "./dist/extension.js",
   "scripts": {
@@ -39,15 +37,18 @@
     "webpack": "^5.91.0",
     "webpack-cli": "^5.1.4"
   },
+  "dependencies": {
+    "simple-oauth2": "^5.0.0"
+  },
   "contributes": {
     "commands": [
       {
-        "command": "sc-vsc-webdev.helloWorld",
-        "title": "Hello World"
+        "command": "sc-vsc-webdev.authenticate",
+        "title": "Authenticate"
       },
       {
-        "command": "extension.authenticate",
-        "title": "Authenticate"
+        "command": "sc-vsc-webdev.linkAndSync",
+        "title": "Link and Sync"
       }
     ],
     "configuration": {
@@ -77,18 +78,10 @@
                 "description": "The Salesforce record ID for synchronization"
               }
             },
-            "required": [
-              "localPath",
-              "salesforceObject",
-              "salesforceField",
-              "salesforceRecordId"
-            ]
+            "required": ["localPath", "salesforceObject", "salesforceField", "salesforceRecordId"]
           }
         }
       }
     }
-  },
-  "dependencies": {
-    "simple-oauth2": "^5.0.0"
   }
 }

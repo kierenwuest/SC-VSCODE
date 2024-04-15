@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-import { create } from 'simple-oauth2';
+import { AuthorizationCode } from 'simple-oauth2';
 
-const credentials = {
+const clientConfig = {
     client: {
-        id: '3MVG929eOx29turFQ0fXnYkUTlvZxTNM0iGjQOdLAhdGQLo92.w4snZRv12FP6jejeY11NxhdX7hXndaab0ac',
-        secret: 'E53D60D015FE1C4DA44B4BA6382FDA866F76151A6A00550BDBC4EC65B690E6DD'
+        id: 'YOUR_CLIENT_ID',
+        secret: 'YOUR_CLIENT_SECRET'
     },
     auth: {
         tokenHost: 'https://login.salesforce.com',
@@ -13,10 +13,10 @@ const credentials = {
     }
 };
 
-const oauth2 = create(credentials);
+const client = new AuthorizationCode(clientConfig);
 
 export async function authenticate() {
-    const authorizationUri = oauth2.authorizationCode.authorizeURL({
+    const authorizationUri = client.authorizeURL({
         redirect_uri: 'http://localhost:1717/callback',
         scope: 'api id web',
         state: Math.random().toString(36).substring(2) // Random state for security
@@ -24,4 +24,3 @@ export async function authenticate() {
 
     vscode.env.openExternal(vscode.Uri.parse(authorizationUri));
 }
-
