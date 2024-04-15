@@ -1,26 +1,22 @@
 import * as vscode from 'vscode';
-import { AuthorizationCode } from 'simple-oauth2';
+import { exec } from 'child_process';
 
-const clientConfig = {
-    client: {
-        id: 'YOUR_CLIENT_ID',
-        secret: 'YOUR_CLIENT_SECRET'
-    },
-    auth: {
-        tokenHost: 'https://login.salesforce.com',
-        tokenPath: '/services/oauth2/token',
-        authorizePath: '/services/oauth2/authorize'
-    }
-};
+export function authenticate() {
+    // Command to authenticate using Salesforce CLI
+    const command = 'sfdx force:auth:web:login -a vscodeOrg -r https://login.salesforce.com';
 
-const client = new AuthorizationCode(clientConfig);
-
-export async function authenticate() {
-    const authorizationUri = client.authorizeURL({
-        redirect_uri: 'http://localhost:1717/callback',
-        scope: 'api id web',
-        state: Math.random().toString(36).substring(2) // Random state for security
+    exec(command, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error: ${error.message}`);
+            vscode.window.showErrorMessage('Authentication failed. Please ensure Salesforce CLI is installed.');
+            return;
+        }
+        if (stderr) {
+            console.error(`Error: ${stderr}`);
+            vscode.window.showErrorMessage('Error during authentication. Check the terminal for more information.');
+            return;
+        }
+        vscode.window.showInformationMessage('Authenticated successfully. Org alias set to "vscodeOrg".');
+        console.log(stdout);  // Output the result of the CLI command
     });
-
-    vscode.env.openExternal(vscode.Uri.parse(authorizationUri));
 }

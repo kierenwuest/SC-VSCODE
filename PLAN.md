@@ -70,3 +70,12 @@ This setup will provide your extension with the necessary permissions to update 
 - Securely handle authentication data, possibly using environment variables or encrypted storage.
 
 This plan provides a structured approach to building your VSCode extension for StoreConnect, enhancing the development experience by integrating directly with Salesforce CMS capabilities. If you have any more specific questions or need further details on any of the steps, feel free to ask!
+
+
+s_c__Style_Block__c.s_c__Content__c:a2rGA000000xyAiYAI
+
+authenticate.ts
+linkAndSync.ts
+extension.ts
+package.json
+webpack.config.js

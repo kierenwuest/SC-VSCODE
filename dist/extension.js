@@ -30,69 +30,18 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.deactivate = exports.activate = void 0;
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 const vscode = __importStar(__webpack_require__(1));
 const authenticate_1 = __webpack_require__(2);
-/* // This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
-
-    // Use the console to output diagnostic information (console.log) and errors (console.error)
-    // This line of code will only be executed once when your extension is activated
-    console.log('Congratulations, your extension "sc-vsc-webdev" is now active!');
-
-    // The command has been defined in the package.json file
-    // Now provide the implementation of the command with registerCommand
-    // The commandId parameter must match the command field in package.json
-    let disposable = vscode.commands.registerCommand('sc-vsc-webdev.helloWorld', () => {
-        // The code you place here will be executed every time your command is executed
-        // Display a message box to the user
-        vscode.window.showInformationMessage('Hello World from StoreConnect VSC WebDev!');
-    });
-
-    context.subscriptions.push(disposable);
-} */
+const linkAndSync_1 = __webpack_require__(4);
 function activate(context) {
-    let disposable = vscode.commands.registerCommand('extension.authenticate', () => {
-        (0, authenticate_1.authenticate)().then(() => {
-            vscode.window.showInformationMessage('Authentication Successful!');
-        }).catch(err => {
-            vscode.window.showErrorMessage('Authentication Failed: ' + err.message);
-        });
-    });
-    context.subscriptions.push(disposable);
+    let authenticateCommand = vscode.commands.registerCommand('sc-vsc-webdev.authenticate', authenticate_1.authenticate);
+    let linkAndSyncCommand = vscode.commands.registerCommand('sc-vsc-webdev.linkAndSync', linkAndSync_1.linkAndSync);
+    context.subscriptions.push(authenticateCommand, linkAndSyncCommand);
 }
 exports.activate = activate;
-// Function to read configuration
-function getFileMappings() {
-    const config = vscode.workspace.getConfiguration('storeConnect');
-    const fileMappings = config.get('fileMappings');
-    return fileMappings;
+function deactivate() {
+    // Clean up if needed
 }
-// Function to update or add a new mapping
-function addFileMapping(mapping) {
-    const config = vscode.workspace.getConfiguration('storeConnect');
-    let fileMappings = config.get('fileMappings', []);
-    fileMappings.push(mapping);
-    config.update('fileMappings', fileMappings, vscode.ConfigurationTarget.Workspace);
-}
-// Example usage of addFileMapping
-addFileMapping({
-    localPath: 'path/to/file.css',
-    salesforceObject: 'CustomObject__c',
-    salesforceField: 'Content__c',
-    salesforceRecordId: 'a0X1I00000XXXXXUAW'
-});
-vscode.workspace.onDidChangeConfiguration(event => {
-    if (event.affectsConfiguration('storeConnect.fileMappings')) {
-        const updatedMappings = getFileMappings();
-        // Handle the updated mappings, such as re-syncing files
-        console.log('Configurations updated:', updatedMappings);
-    }
-});
-// This method is called when your extension is deactivated
-function deactivate() { }
 exports.deactivate = deactivate;
 
 
@@ -133,29 +82,136 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.authenticate = void 0;
 const vscode = __importStar(__webpack_require__(1));
-const simple_oauth2_1 = __webpack_require__(Object(function webpackMissingModule() { var e = new Error("Cannot find module 'simple-oauth2'"); e.code = 'MODULE_NOT_FOUND'; throw e; }()));
-const credentials = {
-    client: {
-        id: '3MVG929eOx29turFQ0fXnYkUTlvZxTNM0iGjQOdLAhdGQLo92.w4snZRv12FP6jejeY11NxhdX7hXndaab0ac',
-        secret: 'E53D60D015FE1C4DA44B4BA6382FDA866F76151A6A00550BDBC4EC65B690E6DD'
-    },
-    auth: {
-        tokenHost: 'https://login.salesforce.com',
-        tokenPath: '/services/oauth2/token',
-        authorizePath: '/services/oauth2/authorize'
-    }
-};
-const oauth2 = (0, simple_oauth2_1.create)(credentials);
-async function authenticate() {
-    const authorizationUri = oauth2.authorizationCode.authorizeURL({
-        redirect_uri: 'http://localhost:1717/callback',
-        scope: 'api id web',
-        state: Math.random().toString(36).substring(2) // Random state for security
+const child_process_1 = __webpack_require__(6);
+function authenticate() {
+    // Command to authenticate using Salesforce CLI
+    const command = 'sfdx force:auth:web:login -a vscodeOrg -r https://login.salesforce.com';
+    (0, child_process_1.exec)(command, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error: ${error.message}`);
+            vscode.window.showErrorMessage('Authentication failed. Please ensure Salesforce CLI is installed.');
+            return;
+        }
+        if (stderr) {
+            console.error(`Error: ${stderr}`);
+            vscode.window.showErrorMessage('Error during authentication. Check the terminal for more information.');
+            return;
+        }
+        vscode.window.showInformationMessage('Authenticated successfully. Org alias set to "vscodeOrg".');
+        console.log(stdout); // Output the result of the CLI command
     });
-    vscode.env.openExternal(vscode.Uri.parse(authorizationUri));
 }
 exports.authenticate = authenticate;
 
+
+/***/ }),
+/* 3 */,
+/* 4 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.linkAndSync = void 0;
+const vscode = __importStar(__webpack_require__(1));
+const child_process_1 = __webpack_require__(6);
+async function linkAndSync() {
+    const input = await vscode.window.showInputBox({ prompt: 'Enter configuration as [Object].[Field]:[RecordID]' });
+    if (!input) {
+        vscode.window.showErrorMessage("Input was cancelled or empty.");
+        return;
+    }
+    const pattern = /^(.+)\.(.+):(.+)$/;
+    const match = input.match(pattern);
+    if (!match) {
+        vscode.window.showErrorMessage("Input format is incorrect. Please use the format [Object].[Field]:[RecordID]");
+        return;
+    }
+    const [_, salesforceObject, salesforceField, salesforceRecordId] = match;
+    if (salesforceObject && salesforceField && salesforceRecordId) {
+        const config = vscode.workspace.getConfiguration('storeConnect');
+        let existingMappings = config.get('fileMappings', []);
+        const newMapping = { salesforceObject, salesforceField, salesforceRecordId };
+        existingMappings.push(newMapping);
+        await config.update('fileMappings', existingMappings, vscode.ConfigurationTarget.Workspace);
+        vscode.window.showInformationMessage("Salesforce link and sync configuration saved.");
+        attachSaveListener(newMapping);
+    }
+    else {
+        vscode.window.showErrorMessage("All components must be provided in the format [Object].[Field]:[RecordID].");
+    }
+}
+exports.linkAndSync = linkAndSync;
+function attachSaveListener(mapping) {
+    const activeEditor = vscode.window.activeTextEditor;
+    if (activeEditor) {
+        const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.workspace.getWorkspaceFolder(activeEditor.document.uri), activeEditor.document.fileName));
+        watcher.onDidChange(uri => {
+            updateSalesforceRecord(mapping, uri);
+        });
+    }
+}
+function updateSalesforceRecord(mapping, uri) {
+    vscode.workspace.openTextDocument(uri).then(doc => {
+        let content = doc.getText();
+        const updateCommand = `sfdx force:data:record:update -s ${mapping.salesforceObject} -i ${mapping.salesforceRecordId} -v "${mapping.salesforceField}='${content.replace(/'/g, "\\'")}'" --json`;
+        (0, child_process_1.exec)(updateCommand, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Update error: ${error}`);
+                vscode.window.showErrorMessage(`Failed to update Salesforce record: ${error.message}`);
+                return;
+            }
+            if (stderr) {
+                console.error(`Error updating Salesforce: ${stderr}`);
+                vscode.window.showErrorMessage(`Error during Salesforce update: ${stderr}`);
+                return;
+            }
+            try {
+                const response = JSON.parse(stdout);
+                if (response.status === 0) {
+                    vscode.window.showInformationMessage('Salesforce record updated successfully.');
+                }
+                else {
+                    vscode.window.showErrorMessage(`Failed to update Salesforce record: ${response.message}`);
+                }
+            }
+            catch (parseError) {
+                console.error(`Error parsing Salesforce response: ${parseError}`);
+                vscode.window.showErrorMessage('Error parsing Salesforce response.');
+            }
+        });
+    });
+}
+
+
+/***/ }),
+/* 5 */,
+/* 6 */
+/***/ ((module) => {
+
+module.exports = require("child_process");
 
 /***/ })
 /******/ 	]);
