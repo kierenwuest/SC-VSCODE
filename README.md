@@ -11,11 +11,10 @@ Associate and sync VSCode .css, .js, .html, .liquid, .md, or any text-based file
 2. **Mapping Files to Salesforce Records**: This extension easily manages configuration and mappings between local files and StoreConnect Salesforce records.
 
 3. **Real-Time Synchronization**: Listens for file save events and updates the corresponding Salesforce record immediately. Links VSCode.
-    
-4.  **User Interface in VSCode**: Creates a user-friendly interface within VSCode, including command palette actions and output logs.
-    
-5.  **Configuration and State Management**: Handles settings for each project, such as authentication for directories, toggling sync on/off, and managing these settings.
-    
+
+4. **User Interface in VSCode**: Creates a user-friendly interface within VSCode, including command palette actions and output logs.
+
+5. **Configuration and State Management**: Handles settings for each project, such as authentication for directories, toggling sync on/off, and managing these settings.
 
 ## Pre-requisites
 
