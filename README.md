@@ -1,4 +1,4 @@
-# SC-VSC-WEBDEV README
+# VSC-WEBDEV README
 
 A VSCode extension designed to enhance the development workflow for StoreConnect Web Development **(SCWD)** and design in themes and website component records. This extension will effectively bridge the gap between local development and Salesforce data management by synchronizing changes in VSCode directly to Salesforce records.
 
@@ -79,71 +79,69 @@ Located in `.vscode/settings.json`, this file can be edited manually to link and
 
 1. Develop Further Error Handling Scenarios
 
-  Robust error handling will prevent the application from crashing and provide users with clear information on what went wrong, improving trust and usability.
+    Robust error handling will provide users with clear information on what went wrong.
 
 2. Improve Link and Sync Input Usability
 
-  Enhancing the input method to keep the input box open when the window focus changes will significantly improve the user experience and reduce frustration, making the extension more practical for regular use.
+    Enhancing the input method to keep the input box open when the window focus changes will improve the user experience and reduce frustration, making the extension more practical for regular use.
 
 3. Develop Tests
 
-  Writing tests for the existing functionalities to help ensure that the extension is stable and functions as expected, reducing bugs and issues as new features are added.
+    Writing tests for the existing functionalities to help ensure that the extension is stable and functions as expected, reducing bugs and issues as new features are added.
 
 4. Change the localhost URL in Authenticate
 
-  If your extension will be used by others outside your local development environment, you'll need to replace the localhost URL with a production URL or implement a more dynamic solution, possibly involving a redirect URI that can handle the OAuth callback in a more flexible manner.
+    When the extension will be used by others outside your local development environment, you'll need to replace the localhost URL with a production URL or implement a more dynamic solution, possibly involving a redirect URI that can handle the OAuth callback in a more flexible manner.
 
 ### 0.9.0 Beta (Placeholder)
 
 1. Add New CORE Features
 
-  While adding features can significantly enhance the value of your extension, it's crucial to ensure the core functionalities are stable and user-friendly before expanding further. Consider user feedback from the MVP before heavily investing in new features.
-
-  - Insert New File create new salesforce record from file.
-  - Upsert Function Insert and Update based on files in project file.
-  - New Comand to Query existing Salesforce records and create files in Project folder.
-  - Unlink Function
+    - Insert Operation: A file can create a new salesforce record.
+    - Upsert Operation: Insert and Update based on a group of files in the project folder.
+    - New Comand to Query existing Salesforce records and create files in project folder.
+    - Unlink Command
 
 2. Quality of Life Improvements
 
-  Adding clickable options in the footer bar and indicators for sync status will improve the user interface and make the extension more intuitive. This could potentially be moved higher depending on user feedback about the current UI.
+    Adding clickable options in the footer bar and indicators on files for sync status will improve the user interface and make the extension more intuitive.
 
 3. Security Review
 
-  Even based on leveraging Salesforce CLI ensure that all data handling is secure, onsider common security concerns like SQL injection, secure storage of tokens, and data privacy.
+    Even though security is based on leveraging Salesforce CLI, ensure that all data handling is secure, onsider common security concerns like SQL injection, secure storage of tokens, and data privacy.
 
 ### 1.0.0-rc.1 Release Candidate (Placeholder)
 
 1. Documentation
 
-  Comprehensive documentation is crucial for ensuring that users understand how to install, configure, and use your extension effectively. This includes setup instructions, usage examples, and troubleshooting tips.
+    Complete comprehensive documentation ensuring that users understand how to install, configure, and use your extension effectively. This includes setup instructions, usage examples, and troubleshooting tips.
 
 2. Enable User Feedback Loop
 
-  Establish a method for collecting user feedback once the extension is in use. This could be through surveys, GitHub issues, or direct communication channels. Feedback will be vital for prioritizing new features and fixes.
-
-  - Establish via Github
+    Establish a method for collecting user feedback once the extension is in use. This could be through GitHub issues, or direct communication channels.
 
 3. Refactor and Performance Optimization
 
-  As you add features and expand the extension's capabilities, keep an eye on its performance impact, especially in terms of response times and resource consumption.
+    Features are added and expand the extension's capabilities, refactor code to remain as simple as possible and fast perfoming.
 
 4. Establish Support Channel
 
-  The level of support required is yet to be determined.
+    The level of support required is yet to be determined.
 
 ### 1.0.0 Production Release (Placeholder)
 
 1. Publish on VSCode Marketplace
 
-  Make the extension public and distrubtable to StoreConnect customers, partners, admins and prospects.  
+    Make the extension public and distrubtable to StoreConnect customers, partners, admins and prospects.  
 
 2. Publish How to Article showcasing benefits, QOL improvements and time savings.
 
-  Make the extension public and distrubtable to StoreConnect customers, partners, admins and prospects.  
+    Make the extension public and distrubtable to StoreConnect customers, partners, admins and prospects.  
 
 ## For more information
 
 Visit [https://getstoreconnect.com/](https://getstoreconnect.com/)
 
-## Future Feature Considerations
+## Future Feature Ideas
+
+* StoreConnect Theme template clone and project directory setup
