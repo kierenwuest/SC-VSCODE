@@ -22,6 +22,14 @@ Associate and sync VSCode .css, .js, .html, .liquid, .md, or any text-based file
 
 This extension requires Salesforce CLI to be installed.
 
+## Aplha Installation and Run
+
+1. Clone this repository
+2. Ensure npm and Node.js are installed
+3. Install dependencies with `npm install`
+4. Run `npm run compile`
+5. Via the Run and Debug sidebar in VSCode, click the Green play button on 'Run Extension' to launch the extension in a development host instance of VSCode
+
 ## Usage
 
 ### File and Folder Structure
@@ -144,4 +152,4 @@ Visit [https://getstoreconnect.com/](https://getstoreconnect.com/)
 
 ## Future Feature Ideas
 
-* StoreConnect Theme template clone and project directory setup
+- StoreConnect Theme template clone and project directory setup
