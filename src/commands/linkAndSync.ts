@@ -53,7 +53,7 @@ export async function linkAndSync() {
 
 let activeWatchers = new Map<string, vscode.Disposable>();
 
-function attachSaveListener(mapping: Mapping, orgAlias: string) {
+export function attachSaveListener(mapping: Mapping, orgAlias: string) {
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(mapping.localPath));
     if (!workspaceFolder) {
         showError("Workspace folder not found for the given file path.");

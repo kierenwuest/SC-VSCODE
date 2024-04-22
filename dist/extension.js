@@ -32,15 +32,32 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.deactivate = exports.activate = void 0;
 const vscode = __importStar(__webpack_require__(1));
 const authenticate_1 = __webpack_require__(2);
-const linkAndSync_1 = __webpack_require__(6);
+const linkAndSync_1 = __webpack_require__(6); // Import attachSaveListener here
 const outputs_1 = __webpack_require__(4);
 function activate(context) {
+    // Register commands
     let authenticateCommand = vscode.commands.registerCommand('sc-vsc-webdev.authenticate', authenticate_1.authenticate);
     let linkAndSyncCommand = vscode.commands.registerCommand('sc-vsc-webdev.linkAndSync', linkAndSync_1.linkAndSync);
     context.subscriptions.push(authenticateCommand, linkAndSyncCommand);
-    (0, outputs_1.showInfo)("SCWD Ready"); // Inform user that extension is ready
+    // Set up existing file watchers
+    setupExistingWatchers(context);
+    // Inform user that extension is ready
+    (0, outputs_1.showInfo)("SCWD Ready");
 }
 exports.activate = activate;
+function setupExistingWatchers(context) {
+    const config = vscode.workspace.getConfiguration('storeConnect');
+    const existingMappings = config.get('fileMappings', []);
+    const orgAlias = config.get('orgAlias');
+    if (orgAlias && existingMappings) {
+        existingMappings.forEach(mapping => {
+            (0, linkAndSync_1.attachSaveListener)(mapping, orgAlias);
+            context.subscriptions.push({
+                dispose: () => (0, linkAndSync_1.attachSaveListener)(mapping, orgAlias)
+            });
+        });
+    }
+}
 function deactivate() {
     (0, outputs_1.showInfo)("SCWD Goodbye"); // Optionally inform the user that the extension is unloading
 }
@@ -220,7 +237,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.linkAndSync = void 0;
+exports.attachSaveListener = exports.linkAndSync = void 0;
 const vscode = __importStar(__webpack_require__(1));
 const child_process_1 = __webpack_require__(3);
 const path = __importStar(__webpack_require__(5));
@@ -295,6 +312,7 @@ function attachSaveListener(mapping, orgAlias) {
     }
     activeWatchers.set(mapping.localPath, watcher);
 }
+exports.attachSaveListener = attachSaveListener;
 function updateSalesforceRecord(mapping, uri, orgAlias) {
     vscode.workspace.openTextDocument(uri).then(doc => {
         const content = doc.getText();
