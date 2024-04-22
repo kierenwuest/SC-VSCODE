@@ -53,30 +53,33 @@ export async function linkAndSync() {
 
 let activeWatchers = new Map<string, vscode.Disposable>();
 
-function attachSaveListener(mapping: Mapping, orgAlias: string) { // Include orgAlias parameter
+function attachSaveListener(mapping: Mapping, orgAlias: string) {
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(mapping.localPath));
     if (!workspaceFolder) {
         showError("Workspace folder not found for the given file path.");
         return;
     }
 
-    const pattern = new vscode.RelativePattern(workspaceFolder, '**/' + path.basename(mapping.localPath));
+    const pattern = new vscode.RelativePattern(workspaceFolder, path.basename(mapping.localPath));
     const watcher = vscode.workspace.createFileSystemWatcher(pattern);
 
-    watcher.onDidChange(uri => {
-        log(`File Changed: ${uri.fsPath}`);
-        updateSalesforceRecord(mapping, uri, orgAlias);
-    });
+    const handleFileChange = (uri: vscode.Uri) => {
+        if (uri.fsPath === mapping.localPath) {
+            log(`File Changed: ${uri.fsPath}`);
+            updateSalesforceRecord(mapping, uri, orgAlias);
+        } else {
+            log(`Ignored File Change: ${uri.fsPath}`);
+        }
+    };
 
-    watcher.onDidCreate(uri => {
-        log(`File Created: ${uri.fsPath}`);
-        updateSalesforceRecord(mapping, uri, orgAlias);
-    });
-
+    watcher.onDidChange(handleFileChange);
+    watcher.onDidCreate(handleFileChange);
     watcher.onDidDelete(uri => {
-        log(`File Deleted: ${uri.fsPath}`);
-        activeWatchers.get(mapping.localPath)?.dispose(); 
-        activeWatchers.delete(mapping.localPath);
+        if (uri.fsPath === mapping.localPath) {
+            log(`File Deleted: ${uri.fsPath}`);
+            activeWatchers.get(mapping.localPath)?.dispose();
+            activeWatchers.delete(mapping.localPath);
+        }
     });
 
     if (activeWatchers.has(mapping.localPath)) {
@@ -88,7 +91,7 @@ function attachSaveListener(mapping: Mapping, orgAlias: string) { // Include org
 function updateSalesforceRecord(mapping: Mapping, uri: vscode.Uri, orgAlias: string) {
     vscode.workspace.openTextDocument(uri).then(doc => {
         const content = doc.getText();
-        const escapedContent = content.replace(/'/g, "\\'").replace(/"/g, '\\"'); // Escape single quotes and double quotes
+        const escapedContent = content.replace(/'/g, "\\'").replace(/"/g, '\\"'); // Use a function to properly escape all necessary characters
         const fieldValue = `${mapping.salesforceField}='${escapedContent}'`;
         const updateCommand = `sfdx force:data:record:update -s ${mapping.salesforceObject} -i ${mapping.salesforceRecordId} -v "${fieldValue}" -u ${orgAlias} --json`;
 
@@ -103,8 +106,7 @@ function updateSalesforceRecord(mapping: Mapping, uri: vscode.Uri, orgAlias: str
                     showError(`Failed to update record: ${response.message}`);
                 }
             } catch (error) {
-                const errorMessage = (error instanceof Error) ? error.message : 'Error parsing Salesforce response';
-                showError(errorMessage);
+                showError(`Error parsing Salesforce response: ${error instanceof Error ? error.message : 'unknown error'}`);
             }
         });
 

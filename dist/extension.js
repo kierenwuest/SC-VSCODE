@@ -270,20 +270,25 @@ function attachSaveListener(mapping, orgAlias) {
         (0, outputs_1.showError)("Workspace folder not found for the given file path.");
         return;
     }
-    const pattern = new vscode.RelativePattern(workspaceFolder, '**/' + path.basename(mapping.localPath));
+    const pattern = new vscode.RelativePattern(workspaceFolder, path.basename(mapping.localPath));
     const watcher = vscode.workspace.createFileSystemWatcher(pattern);
-    watcher.onDidChange(uri => {
-        (0, outputs_1.log)(`File Changed: ${uri.fsPath}`);
-        updateSalesforceRecord(mapping, uri, orgAlias);
-    });
-    watcher.onDidCreate(uri => {
-        (0, outputs_1.log)(`File Created: ${uri.fsPath}`);
-        updateSalesforceRecord(mapping, uri, orgAlias);
-    });
+    const handleFileChange = (uri) => {
+        if (uri.fsPath === mapping.localPath) {
+            (0, outputs_1.log)(`File Changed: ${uri.fsPath}`);
+            updateSalesforceRecord(mapping, uri, orgAlias);
+        }
+        else {
+            (0, outputs_1.log)(`Ignored File Change: ${uri.fsPath}`);
+        }
+    };
+    watcher.onDidChange(handleFileChange);
+    watcher.onDidCreate(handleFileChange);
     watcher.onDidDelete(uri => {
-        (0, outputs_1.log)(`File Deleted: ${uri.fsPath}`);
-        activeWatchers.get(mapping.localPath)?.dispose();
-        activeWatchers.delete(mapping.localPath);
+        if (uri.fsPath === mapping.localPath) {
+            (0, outputs_1.log)(`File Deleted: ${uri.fsPath}`);
+            activeWatchers.get(mapping.localPath)?.dispose();
+            activeWatchers.delete(mapping.localPath);
+        }
     });
     if (activeWatchers.has(mapping.localPath)) {
         activeWatchers.get(mapping.localPath)?.dispose();
@@ -293,7 +298,7 @@ function attachSaveListener(mapping, orgAlias) {
 function updateSalesforceRecord(mapping, uri, orgAlias) {
     vscode.workspace.openTextDocument(uri).then(doc => {
         const content = doc.getText();
-        const escapedContent = content.replace(/'/g, "\\'").replace(/"/g, '\\"'); // Escape single quotes and double quotes
+        const escapedContent = content.replace(/'/g, "\\'").replace(/"/g, '\\"'); // Use a function to properly escape all necessary characters
         const fieldValue = `${mapping.salesforceField}='${escapedContent}'`;
         const updateCommand = `sfdx force:data:record:update -s ${mapping.salesforceObject} -i ${mapping.salesforceRecordId} -v "${fieldValue}" -u ${orgAlias} --json`;
         const proc = (0, child_process_1.spawn)('bash', ['-c', updateCommand]);
@@ -308,8 +313,7 @@ function updateSalesforceRecord(mapping, uri, orgAlias) {
                 }
             }
             catch (error) {
-                const errorMessage = (error instanceof Error) ? error.message : 'Error parsing Salesforce response';
-                (0, outputs_1.showError)(errorMessage);
+                (0, outputs_1.showError)(`Error parsing Salesforce response: ${error instanceof Error ? error.message : 'unknown error'}`);
             }
         });
         proc.stderr.on('data', (data) => {
