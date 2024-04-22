@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { exec, ExecException } from 'child_process';
+import { exec, ExecException , spawn } from 'child_process';
 import * as path from 'path';
 import { log, showError, showInfo } from '../outputs';
 
@@ -88,27 +88,32 @@ function attachSaveListener(mapping: Mapping, orgAlias: string) { // Include org
 function updateSalesforceRecord(mapping: Mapping, uri: vscode.Uri, orgAlias: string) {
     vscode.workspace.openTextDocument(uri).then(doc => {
         const content = doc.getText();
-        const updateCommand = `sfdx force:data:record:update -s ${mapping.salesforceObject} -i ${mapping.salesforceRecordId} -v "${mapping.salesforceField}='${content.replace(/'/g, "\\'")}'" -u ${orgAlias} --json`;
+        const escapedContent = content.replace(/'/g, "\\'").replace(/"/g, '\\"'); // Escape single quotes and double quotes
+        const fieldValue = `${mapping.salesforceField}='${escapedContent}'`;
+        const updateCommand = `sfdx force:data:record:update -s ${mapping.salesforceObject} -i ${mapping.salesforceRecordId} -v "${fieldValue}" -u ${orgAlias} --json`;
 
-        exec(updateCommand, (error: ExecException | null, stdout: string, stderr: string) => {
-            if (error) {
-                showError(`Update error: ${error.message}`);
-                return;
-            }
-            if (stderr) {
-                showError(`Error during Salesforce update: ${stderr}`);
-                return;
-            }
+        const proc = spawn('bash', ['-c', updateCommand]);
+
+        proc.stdout.on('data', (data: Buffer) => {
             try {
-                const response = JSON.parse(stdout);
+                const response = JSON.parse(data.toString());
                 if (response.status === 0) {
                     showInfo('Salesforce record updated successfully.');
                 } else {
                     showError(`Failed to update record: ${response.message}`);
                 }
-            } catch (e) {
-                showError('Error parsing Salesforce response.');
+            } catch (error) {
+                const errorMessage = (error instanceof Error) ? error.message : 'Error parsing Salesforce response';
+                showError(errorMessage);
             }
+        });
+
+        proc.stderr.on('data', (data: Buffer) => {
+            showError(`Error during Salesforce update: ${data.toString()}`);
+        });
+
+        proc.on('error', (error: Error) => {
+            showError(`Update error: ${error.message}`);
         });
     });
 }

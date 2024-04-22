@@ -293,18 +293,13 @@ function attachSaveListener(mapping, orgAlias) {
 function updateSalesforceRecord(mapping, uri, orgAlias) {
     vscode.workspace.openTextDocument(uri).then(doc => {
         const content = doc.getText();
-        const updateCommand = `sfdx force:data:record:update -s ${mapping.salesforceObject} -i ${mapping.salesforceRecordId} -v "${mapping.salesforceField}='${content.replace(/'/g, "\\'")}'" -u ${orgAlias} --json`;
-        (0, child_process_1.exec)(updateCommand, (error, stdout, stderr) => {
-            if (error) {
-                (0, outputs_1.showError)(`Update error: ${error.message}`);
-                return;
-            }
-            if (stderr) {
-                (0, outputs_1.showError)(`Error during Salesforce update: ${stderr}`);
-                return;
-            }
+        const escapedContent = content.replace(/'/g, "\\'").replace(/"/g, '\\"'); // Escape single quotes and double quotes
+        const fieldValue = `${mapping.salesforceField}='${escapedContent}'`;
+        const updateCommand = `sfdx force:data:record:update -s ${mapping.salesforceObject} -i ${mapping.salesforceRecordId} -v "${fieldValue}" -u ${orgAlias} --json`;
+        const proc = (0, child_process_1.spawn)('bash', ['-c', updateCommand]);
+        proc.stdout.on('data', (data) => {
             try {
-                const response = JSON.parse(stdout);
+                const response = JSON.parse(data.toString());
                 if (response.status === 0) {
                     (0, outputs_1.showInfo)('Salesforce record updated successfully.');
                 }
@@ -312,9 +307,16 @@ function updateSalesforceRecord(mapping, uri, orgAlias) {
                     (0, outputs_1.showError)(`Failed to update record: ${response.message}`);
                 }
             }
-            catch (e) {
-                (0, outputs_1.showError)('Error parsing Salesforce response.');
+            catch (error) {
+                const errorMessage = (error instanceof Error) ? error.message : 'Error parsing Salesforce response';
+                (0, outputs_1.showError)(errorMessage);
             }
+        });
+        proc.stderr.on('data', (data) => {
+            (0, outputs_1.showError)(`Error during Salesforce update: ${data.toString()}`);
+        });
+        proc.on('error', (error) => {
+            (0, outputs_1.showError)(`Update error: ${error.message}`);
         });
     });
 }
