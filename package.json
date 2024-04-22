@@ -44,16 +44,20 @@
       {
         "command": "sc-vsc-webdev.linkAndSync",
         "title": "SCWD: Link and Sync"
+      },
+      {
+        "command": "sc-vsc-webdev.queryOrg",
+        "title": "SCWD: Query Org"
       }
     ],
     "configuration": {
       "title": "StoreConnect Settings",
       "properties": {
-            "storeConnect.orgAlias": {
-                "type": "string",
-                "default": "",
-                "description": "The Salesforce organization alias used for authentication."
-            },
+        "storeConnect.orgAlias": {
+          "type": "string",
+          "default": "",
+          "description": "The Salesforce organization alias used for authentication."
+        },
         "storeConnect.fileMappings": {
           "type": "array",
           "default": [],
@@ -88,5 +92,8 @@
         }
       }
     }
+  },
+  "dependencies": {
+    "p-queue": "^8.0.1"
   }
 }

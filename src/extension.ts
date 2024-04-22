@@ -1,13 +1,17 @@
 import * as vscode from 'vscode';
 import { authenticate } from './commands/authenticate';
-import { linkAndSync, attachSaveListener } from './commands/linkAndSync'; // Import attachSaveListener here
-import { log, showInfo } from './outputs';
+import { linkAndSync } from './commands/linkAndSync';
+import { queryOrg } from './commands/queryOrg';
+import { showInfo } from './outputs';
+import { WatcherManager } from './attachSaveListener'; // Correct import for WatcherManager
 
 export function activate(context: vscode.ExtensionContext) {
     // Register commands
     let authenticateCommand = vscode.commands.registerCommand('sc-vsc-webdev.authenticate', authenticate);
     let linkAndSyncCommand = vscode.commands.registerCommand('sc-vsc-webdev.linkAndSync', linkAndSync);
-    context.subscriptions.push(authenticateCommand, linkAndSyncCommand);
+    let queryOrgCommand = vscode.commands.registerCommand('sc-vsc-webdev.queryOrg', queryOrg);
+
+    context.subscriptions.push(authenticateCommand, linkAndSyncCommand, queryOrgCommand);
 
     // Set up existing file watchers
     setupExistingWatchers(context);
@@ -23,10 +27,8 @@ function setupExistingWatchers(context: vscode.ExtensionContext) {
 
     if (orgAlias && existingMappings) {
         existingMappings.forEach(mapping => {
-            attachSaveListener(mapping, orgAlias);
-            context.subscriptions.push({
-                dispose: () => attachSaveListener(mapping, orgAlias)
-            });
+            WatcherManager.attach(mapping, orgAlias); // Use WatcherManager to attach watchers
+            // Subscriptions to dispose watchers aren't needed because the manager handles it
         });
     }
 }
