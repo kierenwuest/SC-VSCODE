@@ -74,16 +74,17 @@ This command will (current version) query the authenticated org (defined in the 
 * Theme Templates
 * Script Blocks
 
-This command will create files in the working folder named based on the following Salesforce data and give the file types: 
+This command will create files in the working folder named based on the following Salesforce data and give the file types:
+
+* Articles - slug.md
 * Content Blocks - identifier.liquid
 * Theme Templates - path|key.liquid
 * Script Blocks - Name.css
 
 **Note** This will extend in future versions as follows
 
-* Script Blocks - *.js 
-* Store Fields - FieldName.liquid 
-* Articles - *.md
+* Script Blocks - *.js
+* Store Fields - FieldName.liquid
 * Pages - *.liquid
 * Product Categories - FieldName.md
 * Product Fields - FieldName.md
@@ -91,9 +92,9 @@ This command will create files in the working folder named based on the followin
 * Theme Translations - *.csv
 * Theme Variables
 * Store Variables
-* Other Objects that display site content in Markdwon such as Locations, Collection Point, Payment Provider
+* Other Objects that display site content in Markdown such as Locations, Collection Points, Payment Provider
 
-This feature intends to be improved with folder organisation and options. 
+This feature intends to be improved with folder organisation and options.
 
 ### Link and Sync Project Files to Salesforce Records
 
@@ -106,7 +107,7 @@ This feature intends to be improved with folder organisation and options.
 
 This file will now update the text of the file to the specified field of the Salesforce record, on save utilising sfdx commands.
 
-This feature intends to be improved with upsert capability for new files created in VSCode 
+This feature intends to be improved with upsert capability for new files created in VSCode
 
 ## Extension Settings
 
@@ -118,11 +119,12 @@ Located in `.vscode/settings.json`, this file can be edited manually to link and
 
 ## Release Notes and Target Roadmap
 
-### 0.1.0 Alpha MVP 
+### 0.1.0 Alpha MVP
 
 1. End-to-end Authenticate and Update work as expected in the VSCode Development Debug Environment.
-  * Authenticate command authenticates folder to salesforce org. Updates settings.json.
-  * The link and Sync command will update the salesforce record. Updates settings.json.
+
+* Authenticate command authenticates folder to salesforce org. Updates settings.json.
+* The link and Sync command will update the salesforce record. Updates settings.json.
 
 ### 0.2.0 Alpha (Current)
 

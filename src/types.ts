@@ -10,4 +10,5 @@ export interface FileDetails {
   field: string;
   extension: string;
   nameField: string;
+  directory: string;
 }

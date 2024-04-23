@@ -324,6 +324,7 @@ const outputs_1 = __webpack_require__(4);
 const updateSalesforceRecord_1 = __webpack_require__(8);
 class WatcherManager {
     static activeWatchers = new Map();
+    static ignoreInitialChange = new Set(); // To ignore the initial change after creation
     static attach(mapping, orgAlias) {
         const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(mapping.localPath));
         if (!workspaceFolder) {
@@ -332,12 +333,15 @@ class WatcherManager {
         }
         // Ensure not to add duplicate watchers
         if (this.activeWatchers.has(mapping.localPath)) {
-            this.activeWatchers.get(mapping.localPath)?.dispose();
-            this.activeWatchers.delete(mapping.localPath);
+            this.dispose(mapping.localPath);
         }
         const pattern = new vscode.RelativePattern(workspaceFolder, vscode.workspace.asRelativePath(mapping.localPath));
         const watcher = vscode.workspace.createFileSystemWatcher(pattern);
         const handleFileChange = (uri) => {
+            if (this.ignoreInitialChange.has(uri.fsPath)) {
+                this.ignoreInitialChange.delete(uri.fsPath);
+                return;
+            }
             if (uri.fsPath === mapping.localPath) {
                 (0, outputs_1.log)(`File Changed: ${uri.fsPath}`);
                 (0, updateSalesforceRecord_1.updateSalesforceRecord)(mapping, uri, orgAlias);
@@ -355,11 +359,16 @@ class WatcherManager {
             }
         });
         this.activeWatchers.set(mapping.localPath, watcher);
+        this.ignoreInitialChange.add(mapping.localPath); // Ignore the next change after creation
+    }
+    static initializeIgnore(path) {
+        this.ignoreInitialChange.add(path);
     }
     static dispose(path) {
         if (this.activeWatchers.has(path)) {
             this.activeWatchers.get(path)?.dispose();
             this.activeWatchers.delete(path);
+            this.ignoreInitialChange.delete(path); // Make sure to clean up the ignore set
         }
     }
 }
@@ -475,10 +484,10 @@ const p_queue_1 = __importDefault(__webpack_require__(10));
 const attachSaveListener_1 = __webpack_require__(7);
 const updateQueue = new p_queue_1.default({ concurrency: 1 });
 const fileDetailsMapping = [
-    { objectType: 's_c__Content_Block__c', field: 's_c__Content_Markdown__c', extension: 'liquid', nameField: 's_c__Identifier__c' },
-    { objectType: 's_c__Theme_Template__c', field: 's_c__Content__c', extension: 'liquid', nameField: 's_c__Key__c' },
-    { objectType: 's_c__Style_Block__c', field: 's_c__Content__c', extension: 'css', nameField: 'Name' },
-    { objectType: 's_c__Article__c', field: 's_c__Body_Markdown__c', extension: 'md', nameField: 's_c__Slug__c' }
+    { objectType: 's_c__Content_Block__c', field: 's_c__Content_Markdown__c', extension: 'liquid', nameField: 's_c__Identifier__c', directory: 'Content_Blocks' },
+    { objectType: 's_c__Theme_Template__c', field: 's_c__Content__c', extension: 'liquid', nameField: 's_c__Key__c', directory: 'Theme_Templates' },
+    { objectType: 's_c__Style_Block__c', field: 's_c__Content__c', extension: 'css', nameField: 'Name', directory: 'Style_Blocks' },
+    { objectType: 's_c__Article__c', field: 's_c__Body_Markdown__c', extension: 'md', nameField: 's_c__Slug__c', directory: 'Articles' }
 ];
 async function queryOrg() {
     const orgAlias = vscode.workspace.getConfiguration('storeConnect').get('orgAlias');
@@ -488,7 +497,7 @@ async function queryOrg() {
     }
     for (const detail of fileDetailsMapping) {
         const query = `sfdx force:data:soql:query -q "SELECT Id, ${detail.nameField}, ${detail.field} FROM ${detail.objectType}" -o ${orgAlias} --json`;
-        (0, child_process_1.exec)(query, (error, stdout, stderr) => {
+        (0, child_process_1.exec)(query, async (error, stdout, stderr) => {
             if (error) {
                 (0, outputs_1.showError)(`Error querying Salesforce: ${error.message}`);
                 return;
@@ -500,7 +509,7 @@ async function queryOrg() {
             try {
                 const data = JSON.parse(stdout);
                 if (data.result.records && data.result.records.length > 0) {
-                    handleRecords(data.result.records, detail, orgAlias);
+                    await handleRecords(data.result.records, detail, orgAlias);
                 }
                 else {
                     (0, outputs_1.log)(`No records found for ${detail.objectType}.`);
@@ -521,40 +530,34 @@ async function queryOrg() {
 }
 exports.queryOrg = queryOrg;
 async function handleRecords(records, detail, orgAlias) {
-    records.forEach(async (record) => {
+    const directoryPath = path.join(vscode.workspace.rootPath || '', detail.directory);
+    await vscode.workspace.fs.createDirectory(vscode.Uri.file(directoryPath));
+    for (const record of records) {
         const fileName = record[detail.nameField].replace(/\//g, '|') + '.' + detail.extension;
         const content = record[detail.field];
-        const filePath = path.join(vscode.workspace.rootPath || '', fileName);
+        const filePath = path.join(directoryPath, fileName);
         try {
             await vscode.workspace.fs.writeFile(vscode.Uri.file(filePath), Buffer.from(content));
             (0, outputs_1.showInfo)(`File created: ${filePath}`);
             await updateSettingsJson(filePath, detail.objectType, detail.field, record.Id);
-            attachSaveListener_1.WatcherManager.attach({
-                localPath: filePath,
-                salesforceObject: detail.objectType,
-                salesforceField: detail.field,
-                salesforceRecordId: record.Id
-            }, orgAlias);
+            attachSaveListener_1.WatcherManager.initializeIgnore(filePath);
+            attachSaveListener_1.WatcherManager.attach({ localPath: filePath, salesforceObject: detail.objectType, salesforceField: detail.field, salesforceRecordId: record.Id }, orgAlias);
         }
         catch (err) {
             (0, outputs_1.showError)(`Failed to write file: ${err instanceof Error ? err.message : String(err)}`);
         }
-    });
+    }
 }
 async function updateSettingsJson(localPath, objectType, field, recordId) {
     await updateQueue.add(async () => {
         const config = vscode.workspace.getConfiguration('storeConnect');
         let existingMappings = await config.get('fileMappings', []);
-        console.log('Before Update:', existingMappings);
         const mappingExists = existingMappings.some(mapping => mapping.localPath === localPath);
-        console.log('Does mapping exist:', mappingExists);
         if (!mappingExists) {
             const newMapping = { localPath, salesforceObject: objectType, salesforceField: field, salesforceRecordId: recordId };
             existingMappings.push(newMapping);
-            console.log('After Adding new mapping:', existingMappings);
             try {
                 await config.update('fileMappings', existingMappings, vscode.ConfigurationTarget.Workspace);
-                console.log('Configuration successfully updated for', localPath);
             }
             catch (error) {
                 console.error('Failed to update configuration:', error);
