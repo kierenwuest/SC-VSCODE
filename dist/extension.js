@@ -487,7 +487,8 @@ const fileDetailsMapping = [
     { objectType: 's_c__Content_Block__c', field: 's_c__Content_Markdown__c', extension: 'liquid', nameField: 's_c__Identifier__c', directory: 'Content_Blocks' },
     { objectType: 's_c__Theme_Template__c', field: 's_c__Content__c', extension: 'liquid', nameField: 's_c__Key__c', directory: 'Theme_Templates' },
     { objectType: 's_c__Style_Block__c', field: 's_c__Content__c', extension: 'css', nameField: 'Name', directory: 'Style_Blocks' },
-    { objectType: 's_c__Article__c', field: 's_c__Body_Markdown__c', extension: 'md', nameField: 's_c__Slug__c', directory: 'Articles' }
+    { objectType: 's_c__Article__c', field: 's_c__Body_Markdown__c', extension: 'md', nameField: 's_c__Slug__c', directory: 'Articles' },
+    { objectType: 's_c__Script_Block__c', field: 's_c__Content__c', extension: 'js', nameField: 'Name', directory: 'Script_Blocks' }
 ];
 async function queryOrg() {
     const orgAlias = vscode.workspace.getConfiguration('storeConnect').get('orgAlias');

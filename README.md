@@ -70,22 +70,16 @@ Have a project folder that aligns with your Salesforce Org. This folder name is 
 
 This command will (current version) query the authenticated org (defined in the settings.json) for a set of StoreConnect records which are typically used to manage the front end of your StoreConnect site/stores.
 
-* Content Blocks
-* Theme Templates
-* Script Blocks
-
-This command will create files in the working folder named based on the following Salesforce data and give the file types:
-
 * Articles - slug.md
 * Content Blocks - identifier.liquid
 * Theme Templates - path|key.liquid
-* Script Blocks - Name.css
+* Style Blocks - Name.css
+* Script Blocks - Name.js
 
-**Note** This will extend in future versions as follows
+**Note** This will extend in future versions to nested files and special files as follows
 
-* Script Blocks - *.js
-* Store Fields - FieldName.liquid
-* Pages - *.liquid
+* Store Fields - Body.liquid
+* Pages - Body.liquid
 * Product Categories - FieldName.md
 * Product Fields - FieldName.md
 * Theme Assets - *.css
