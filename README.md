@@ -62,17 +62,51 @@ Have a project folder that aligns with your Salesforce Org. This folder name is 
 2. Open Command Palette `Cmd + Shift + P`.
 3. Search for `SCWD: Authenticate` command. Selecting this will open a browser to authenticate with your Salesforce org.
 
+### Query Salesforce Org for StoreConnect Web Front-end Records
+
+1. Ensure the Working Project folder is in view and the 'SCWD: Authenticate' step has been done.
+2. Open Command Palette `Cmd + Shift + P`.
+3. Search for `SCWD: Query Org` command. Select the command to execute it.
+
+This command will (current version) query the authenticated org (defined in the settings.json) for a set of StoreConnect records which are typically used to manage the front end of your StoreConnect site/stores.
+
+* Content Blocks
+* Theme Templates
+* Script Blocks
+
+This command will create files in the working folder named based on the following Salesforce data and give the file types: 
+* Content Blocks - identifier.liquid
+* Theme Templates - path|key.liquid
+* Script Blocks - Name.css
+
+**Note** This will extend in future versions as follows
+
+* Script Blocks - *.js 
+* Store Fields - FieldName.liquid 
+* Articles - *.md
+* Pages - *.liquid
+* Product Categories - FieldName.md
+* Product Fields - FieldName.md
+* Theme Assets - *.css
+* Theme Translations - *.csv
+* Theme Variables
+* Store Variables
+* Other Objects that display site content in Markdwon such as Locations, Collection Point, Payment Provider
+
+This feature intends to be improved with folder organisation and options. 
+
 ### Link and Sync Project Files to Salesforce Records
 
 1. Ensure the project file is selected.
 2. Open Command Palette `Cmd + Shift + P`.
 3. Search for `SCWD: Link and Sync` and select the command.
 4. A prompt will ask for a string that identifies the record.
-    - The input structure is [SalesforceObject.SalesforceField:RecordId]
-    - e.g., `s_c__Style_Block__c.s_c__Content__c:a2rGA000000xyAiYAI`
+    * The input structure is [SalesforceObject.SalesforceField:RecordId]
+    * e.g., `s_c__Style_Block__c.s_c__Content__c:a2rGA000000xyAiYAI`
 
-This file will now update the text of the file to the specified field of the Salesforce record, on save.
-It utilises the sfdx command `sfdx force:data:record:update -s {ObjectAPIName} -i {RecordId} -v "{FieldAPIName}='{Content}'" -o {OrgAlias} --json`
+This file will now update the text of the file to the specified field of the Salesforce record, on save utilising sfdx commands.
+
+This feature intends to be improved with upsert capability for new files created in VSCode 
 
 ## Extension Settings
 
@@ -84,89 +118,12 @@ Located in `.vscode/settings.json`, this file can be edited manually to link and
 
 ## Release Notes and Target Roadmap
 
-### 0.1.0 Alpha MVP (Current)
+### 0.1.0 Alpha MVP 
 
-- End-to-end features and workflow work as expected in the VSCode Development Debug Environment.
-  - Authenticate command authenticates folder to salesforce org. Updates settings.json.
-  - The link and Sync command will update the salesforce record. Updates settings.json.
-- Supports Update function only.
+1. End-to-end Authenticate and Update work as expected in the VSCode Development Debug Environment.
+  * Authenticate command authenticates folder to salesforce org. Updates settings.json.
+  * The link and Sync command will update the salesforce record. Updates settings.json.
 
-### 0.2.0 Alpha (Placeholder)
+### 0.2.0 Alpha (Current)
 
-1. Develop Further Error Handling Scenarios
-
-    Robust error handling will provide users with clear information on what went wrong.
-
-2. Improve Link and Sync Input Usability
-
-    Enhancing the input method to keep the input box open when the window focus changes will improve the user experience and reduce frustration, making the extension more practical for regular use.
-
-3. Develop Tests
-
-    Writing tests for the existing functionalities to help ensure that the extension is stable and functions as expected, reducing bugs and issues as new features are added.
-
-4. Change the localhost URL in Authenticate
-
-    When the extension will be used by others outside your local development environment, you'll need to replace the localhost URL with a production URL or implement a more dynamic solution, possibly involving a redirect URI that can handle the OAuth callback more flexibly.
-
-### 0.9.0 Beta (Placeholder)
-
-1. Add New CORE Features
-
-    - Insert Operation: A file can create a new salesforce record.
-    - Upsert Operation: Insert and Update based on a group of files in the project folder.
-    - New command to Query existing Salesforce records and create files in the project folder.
-      - Content Block
-      - Theme Template
-      - Style Block
-      - Script Block
-      - Article
-      - Page
-      - Product
-      - Product Category
-      - Store
-    - Unlink Command
-
-2. Quality of Life Improvements
-
-    Adding clickable options in the footer bar and indicators on files for sync status will improve the user interface and make the extension more intuitive.
-
-3. Security Review
-
-    Even though security is based on leveraging Salesforce CLI, ensure that all data handling is secure, and consider common security concerns like SQL injection, secure storage of tokens, and data privacy.
-
-### 1.0.0-rc.1 Release Candidate (Placeholder)
-
-1. Documentation
-
-    Complete comprehensive documentation ensuring that users understand how to install, configure, and use your extension effectively. This includes setup instructions, usage examples, and troubleshooting tips.
-
-2. Enable User Feedback Loop
-
-    Establish a method for collecting user feedback once the extension is in use. This could be through GitHub issues or direct communication channels.
-
-3. Refactor and Performance Optimization
-
-    Features are added and expand the extension's capabilities, refactoring code to remain as simple as possible and fast performing.
-
-4. Establish Support Channel
-
-    The level of support required is yet to be determined.
-
-### 1.0.0 Production Release (Placeholder)
-
-1. Publish on VSCode Marketplace
-
-    Make the extension public and distributable to StoreConnect customers, partners, admins and prospects.
-
-2. Publish a How-to Article showcasing benefits, QOL improvements and time savings.
-
-    Make the extension public and distributable to StoreConnect customers, partners, admins and prospects.  
-
-## For more information
-
-Visit [https://getstoreconnect.com/](https://getstoreconnect.com/)
-
-## Future Feature Ideas
-
-- StoreConnect Theme template clone and project directory setup
+1. Query Org command implemented
