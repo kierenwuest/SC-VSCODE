@@ -1,40 +1,65 @@
 import * as vscode from 'vscode';
-import { spawn } from 'child_process';
+import axios from 'axios';
+import { exec } from 'child_process';
 import { showError, showInfo } from './outputs';
-import { Mapping } from './types';
+import { Mapping, SalesforceSession } from './types'; 
 
-export function updateSalesforceRecord(mapping: Mapping, uri: vscode.Uri, orgAlias: string) {
-    vscode.workspace.openTextDocument(uri).then(doc => {
-        const content = doc.getText();
-        const escapedContent = escapeContent(content);
-        const fieldValue = `${mapping.salesforceField}='${escapedContent}'`;
-        const updateCommand = `sfdx force:data:record:update -s ${mapping.salesforceObject} -i ${mapping.salesforceRecordId} -v "${fieldValue}" -u ${orgAlias} --json`;
-
-        const proc = spawn('bash', ['-c', updateCommand]);
-
-        proc.stdout.on('data', (data: Buffer) => {
-            try {
-                const response = JSON.parse(data.toString());
-                if (response.status === 0) {
-                    showInfo('Salesforce record updated successfully.');
-                } else {
-                    showError(`Failed to update record: ${response.message}`);
-                }
-            } catch (error) {
-                showError(`Error parsing Salesforce response: ${error instanceof Error ? error.message : 'unknown error'}`);
+function getSalesforceSession(orgAlias: string): Promise<SalesforceSession> {
+    const command = `sfdx force:org:display --json --targetusername ${orgAlias}`;
+    return new Promise((resolve, reject) => {
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                reject(stderr || error.message);
+                return;
             }
-        });
-
-        proc.stderr.on('data', (data: Buffer) => {
-            showError(`Error during Salesforce update: ${data.toString()}`);
-        });
-
-        proc.on('error', (error: Error) => {
-            showError(`Update error: ${error.message}`);
+            try {
+                const data = JSON.parse(stdout);
+                resolve({ accessToken: data.result.accessToken, instanceUrl: data.result.instanceUrl });
+            } catch (error) {
+                if (error instanceof Error) {
+                    reject(`Failed to parse response: ${error.message}`);
+                } else {
+                    reject(`An unexpected parsing error occurred`);
+                }
+            }
         });
     });
 }
 
-function escapeContent(content: string): string {
-    return content.replace(/'/g, "\\'").replace(/"/g, '\\"');
+export async function updateSalesforceRecord(mapping: Mapping, uri: vscode.Uri, orgAlias: string) {
+    try {
+        const doc = await vscode.workspace.openTextDocument(uri);
+        const content = doc.getText();
+
+        const session = await getSalesforceSession(orgAlias);
+        const url = `${session.instanceUrl}/services/data/v53.0/sobjects/${mapping.salesforceObject}/${mapping.salesforceRecordId}`;
+        const data = {
+            [mapping.salesforceField]: content
+        };
+
+        const response = await axios({
+            method: 'patch',
+            url,
+            data,
+            headers: {
+                'Authorization': `Bearer ${session.accessToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.status === 204) {
+            showInfo('Salesforce record updated successfully.');
+        } else {
+            showError(`Failed to update record: ${response.status}`);
+        }
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            showError(`Error during Salesforce update: ${error.response.data}`);
+        } else if (error instanceof Error) {
+            showError(`Update error: ${error.message}`);
+        } else {
+            showError(`An unexpected error occurred`);
+        }
+    }
 }
+

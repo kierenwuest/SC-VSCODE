@@ -12,3 +12,8 @@ export interface FileDetails {
   nameField: string;
   directory: string;
 }
+
+export interface SalesforceSession {
+  accessToken: string;
+  instanceUrl: string;
+}
