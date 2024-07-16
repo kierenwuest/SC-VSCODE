@@ -52,32 +52,30 @@ export async function queryOrg() {
 
 async function handleRecords(records: any[], detail: FileDetails, orgAlias: string) {
     for (const record of records) {
-        // Directly fetch the sub-directory from the nested relationship
-        const subDirectoryField = detail.subDirectory.split('.'); // e.g., ['s_c__Store_Id__r', 'Name']
-        const subDirectory = record[subDirectoryField[0]][subDirectoryField[1]];
+        let subDirectory;
+        if (detail.subDirectory.includes('.')) {
+            // Handling nested relationship fields
+            const subDirectoryField = detail.subDirectory.split('.'); // e.g., ['s_c__Store_Id__r', 'Name']
+            subDirectory = record[subDirectoryField[0]] ? record[subDirectoryField[0]][subDirectoryField[1]] : 'Default';
+        } else {
+            // Handling direct fields
+            subDirectory = record[detail.subDirectory] || 'Default';
+        }
 
-        // Log the sub-directory path to verify it's being captured correctly
         log(`Processing ${detail.objectType} - Sub-directory: ${subDirectory}`);
 
-        // Construct the full directory path
-        const directoryPath = path.join(vscode.workspace.rootPath || '', detail.directory, subDirectory.replace(/\//g, path.sep));  // Ensures cross-platform compatibility
-
-        // Ensure the full directory path exists
+        const directoryPath = path.join(vscode.workspace.rootPath || '', detail.directory, subDirectory.replace(/\//g, path.sep));
         await vscode.workspace.fs.createDirectory(vscode.Uri.file(directoryPath));
 
-        // Prepare the file path from the record's name field and append the file extension.
-        const fullPath = path.join(directoryPath, record[detail.nameField]);
-        const fullFilePath = `${fullPath}.${detail.extension}`;
-
+        const fullPath = path.join(directoryPath, `${record[detail.nameField]}.${detail.extension}`);
+        
         try {
-            // Write content to the file system
-            await vscode.workspace.fs.writeFile(vscode.Uri.file(fullFilePath), Buffer.from(record[detail.field]));
-            showInfo(`File created: ${fullFilePath}`);
+            await vscode.workspace.fs.writeFile(vscode.Uri.file(fullPath), Buffer.from(record[detail.field]));
+            showInfo(`File created: ${fullPath}`);
 
-            // Update settings JSON and initialize watcher
-            await updateSettingsJson(fullFilePath, detail.objectType, detail.field, record.Id);
-            WatcherManager.initializeIgnore(fullFilePath);
-            WatcherManager.attach({ localPath: fullFilePath, salesforceObject: detail.objectType, salesforceField: detail.field, salesforceRecordId: record.Id }, orgAlias);
+            await updateSettingsJson(fullPath, detail.objectType, detail.field, record.Id);
+            WatcherManager.initializeIgnore(fullPath);
+            WatcherManager.attach({ localPath: fullPath, salesforceObject: detail.objectType, salesforceField: detail.field, salesforceRecordId: record.Id }, orgAlias);
         } catch (err) {
             showError(`Failed to write file: ${err instanceof Error ? err.message : String(err)}`);
         }
