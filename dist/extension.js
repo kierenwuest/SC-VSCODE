@@ -8497,11 +8497,11 @@ const p_queue_1 = __importDefault(__webpack_require__(50));
 const attachSaveListener_1 = __webpack_require__(7);
 const updateQueue = new p_queue_1.default({ concurrency: 1 });
 const fileDetailsMapping = [
-    { objectType: 's_c__Content_Block__c', field: 's_c__Content_Markdown__c', extension: 'liquid', nameField: 's_c__Identifier__c', directory: 'Content_Blocks' },
-    { objectType: 's_c__Theme_Template__c', field: 's_c__Content__c', extension: 'liquid', nameField: 's_c__Key__c', directory: 'Theme_Templates' },
-    { objectType: 's_c__Style_Block__c', field: 's_c__Content__c', extension: 'css', nameField: 'Name', directory: 'Style_Blocks' },
-    { objectType: 's_c__Article__c', field: 's_c__Body_Markdown__c', extension: 'md', nameField: 's_c__Slug__c', directory: 'Articles' },
-    { objectType: 's_c__Script_Block__c', field: 's_c__Content__c', extension: 'js', nameField: 'Name', directory: 'Script_Blocks' }
+    { objectType: 's_c__Content_Block__c', field: 's_c__Content_Markdown__c', extension: 'liquid', nameField: 's_c__Identifier__c', directory: 'Content_Blocks', subDirectory: 's_c__Template__c' },
+    { objectType: 's_c__Theme_Template__c', field: 's_c__Content__c', extension: 'liquid', nameField: 's_c__Key__c', directory: 'Theme_Templates', subDirectory: 's_c__Theme_Id__r.Name' },
+    { objectType: 's_c__Style_Block__c', field: 's_c__Content__c', extension: 'css', nameField: 'Name', directory: 'Style_Blocks', subDirectory: 's_c__Store_Id__r.Name' },
+    { objectType: 's_c__Article__c', field: 's_c__Body_Markdown__c', extension: 'md', nameField: 's_c__Slug__c', directory: 'Articles', subDirectory: 's_c__Store_Id__r.Name' },
+    { objectType: 's_c__Script_Block__c', field: 's_c__Content__c', extension: 'js', nameField: 'Name', directory: 'Script_Blocks', subDirectory: 's_c__Store_Id__r.Name' }
 ];
 async function queryOrg() {
     const orgAlias = vscode.workspace.getConfiguration('storeConnect').get('orgAlias');
@@ -8510,7 +8510,7 @@ async function queryOrg() {
         return;
     }
     for (const detail of fileDetailsMapping) {
-        const query = `sfdx force:data:soql:query -q "SELECT Id, ${detail.nameField}, ${detail.field} FROM ${detail.objectType}" -o ${orgAlias} --json`;
+        const query = `sfdx force:data:soql:query -q "SELECT Id, ${detail.nameField}, ${detail.field}, ${detail.subDirectory} FROM ${detail.objectType}" -o ${orgAlias} --json`;
         (0, child_process_1.exec)(query, async (error, stdout, stderr) => {
             if (error) {
                 (0, outputs_1.showError)(`Error querying Salesforce: ${error.message}`);
@@ -8522,6 +8522,7 @@ async function queryOrg() {
             }
             try {
                 const data = JSON.parse(stdout);
+                (0, outputs_1.log)(`Query Data: ${JSON.stringify(data, null, 2)}`); // This will log the full structure of the response
                 if (data.result.records && data.result.records.length > 0) {
                     await handleRecords(data.result.records, detail, orgAlias);
                 }
@@ -8530,32 +8531,34 @@ async function queryOrg() {
                 }
             }
             catch (error) {
-                // Check if error is an instance of Error
-                if (error instanceof Error) {
-                    (0, outputs_1.showError)(`Error parsing query results: ${error.message}`);
-                }
-                else {
-                    // If it's not an Error object, handle it as a generic error
-                    (0, outputs_1.showError)(`An unexpected error occurred: ${String(error)}`);
-                }
+                (0, outputs_1.showError)(`Error parsing query results: ${error instanceof Error ? error.message : 'An unexpected error occurred'}`);
             }
         });
     }
 }
 exports.queryOrg = queryOrg;
 async function handleRecords(records, detail, orgAlias) {
-    const directoryPath = path.join(vscode.workspace.rootPath || '', detail.directory);
-    await vscode.workspace.fs.createDirectory(vscode.Uri.file(directoryPath));
     for (const record of records) {
-        const fileName = record[detail.nameField].replace(/\//g, '|') + '.' + detail.extension;
-        const content = record[detail.field];
-        const filePath = path.join(directoryPath, fileName);
+        // Directly fetch the sub-directory from the nested relationship
+        const subDirectoryField = detail.subDirectory.split('.'); // e.g., ['s_c__Store_Id__r', 'Name']
+        const subDirectory = record[subDirectoryField[0]][subDirectoryField[1]];
+        // Log the sub-directory path to verify it's being captured correctly
+        (0, outputs_1.log)(`Processing ${detail.objectType} - Sub-directory: ${subDirectory}`);
+        // Construct the full directory path
+        const directoryPath = path.join(vscode.workspace.rootPath || '', detail.directory, subDirectory.replace(/\//g, path.sep)); // Ensures cross-platform compatibility
+        // Ensure the full directory path exists
+        await vscode.workspace.fs.createDirectory(vscode.Uri.file(directoryPath));
+        // Prepare the file path from the record's name field and append the file extension.
+        const fullPath = path.join(directoryPath, record[detail.nameField]);
+        const fullFilePath = `${fullPath}.${detail.extension}`;
         try {
-            await vscode.workspace.fs.writeFile(vscode.Uri.file(filePath), Buffer.from(content));
-            (0, outputs_1.showInfo)(`File created: ${filePath}`);
-            await updateSettingsJson(filePath, detail.objectType, detail.field, record.Id);
-            attachSaveListener_1.WatcherManager.initializeIgnore(filePath);
-            attachSaveListener_1.WatcherManager.attach({ localPath: filePath, salesforceObject: detail.objectType, salesforceField: detail.field, salesforceRecordId: record.Id }, orgAlias);
+            // Write content to the file system
+            await vscode.workspace.fs.writeFile(vscode.Uri.file(fullFilePath), Buffer.from(record[detail.field]));
+            (0, outputs_1.showInfo)(`File created: ${fullFilePath}`);
+            // Update settings JSON and initialize watcher
+            await updateSettingsJson(fullFilePath, detail.objectType, detail.field, record.Id);
+            attachSaveListener_1.WatcherManager.initializeIgnore(fullFilePath);
+            attachSaveListener_1.WatcherManager.attach({ localPath: fullFilePath, salesforceObject: detail.objectType, salesforceField: detail.field, salesforceRecordId: record.Id }, orgAlias);
         }
         catch (err) {
             (0, outputs_1.showError)(`Failed to write file: ${err instanceof Error ? err.message : String(err)}`);

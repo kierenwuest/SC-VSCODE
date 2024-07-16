@@ -11,6 +11,7 @@ export interface FileDetails {
   extension: string;
   nameField: string;
   directory: string;
+  subDirectory: string;
 }
 
 export interface SalesforceSession {
