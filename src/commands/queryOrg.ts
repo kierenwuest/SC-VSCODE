@@ -9,11 +9,11 @@ import { WatcherManager } from '../attachSaveListener';
 const updateQueue = new Queue({ concurrency: 1 });
 
 const fileDetailsMapping: FileDetails[] = [
-    { objectType: 's_c__Content_Block__c', field: 's_c__Content_Markdown__c', extension: 'liquid', nameField: 's_c__Identifier__c', directory: 'Content_Blocks', subDirectory: 's_c__Template__c' },
-    { objectType: 's_c__Theme_Template__c', field: 's_c__Content__c', extension: 'liquid', nameField: 's_c__Key__c', directory: 'Theme_Templates', subDirectory: 's_c__Theme_Id__r.Name' },
-    { objectType: 's_c__Style_Block__c', field: 's_c__Content__c', extension: 'css', nameField: 'Name', directory: 'Style_Blocks', subDirectory: 's_c__Store_Id__r.Name' },
-    { objectType: 's_c__Article__c', field: 's_c__Body_Markdown__c', extension: 'md', nameField: 's_c__Slug__c', directory: 'Articles', subDirectory: 's_c__Store_Id__r.Name' },
-    { objectType: 's_c__Script_Block__c', field: 's_c__Content__c', extension: 'js', nameField: 'Name', directory: 'Script_Blocks', subDirectory: 's_c__Store_Id__r.Name' }
+    { objectType: 's_c__Article__c', directory: 'Articles', subDirectory: 's_c__Store_Id__r.Name', nameField: 's_c__Slug__c', extension: 'md', field: 's_c__Body_Markdown__c' },
+    { objectType: 's_c__Content_Block__c', directory: 'Content_Blocks', subDirectory: 's_c__Template__c', nameField: 's_c__Identifier__c', extension: 'liquid', field: 's_c__Content_Markdown__c' },
+    { objectType: 's_c__Script_Block__c', directory: 'Script_Blocks', subDirectory: 's_c__Store_Id__r.Name', nameField: 'Name', extension: 'js', field: 's_c__Content__c' },
+    { objectType: 's_c__Style_Block__c', directory: 'Style_Blocks', subDirectory: 's_c__Store_Id__r.Name', nameField: 'Name', extension: 'css', field: 's_c__Content__c' },
+    { objectType: 's_c__Theme_Template__c', directory: 'Theme_Templates', subDirectory: 's_c__Theme_Id__r.Name', nameField: 's_c__Key__c', extension: 'liquid', field: 's_c__Content__c' }
 ];
 
 export async function queryOrg() {

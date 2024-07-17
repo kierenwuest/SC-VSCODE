@@ -1,0 +1,419 @@
+Okay time for a new feature
+
+I would like to create a new command called newRecord via newRecord.ts
+
+The type of salesforce record and it's required values will be partially determined by the folder that the file is located in.
+
+from the file structure created by queryOrg we can create logic for the salesforce records to be created
+
+The interface should have a right click menu 'SC - New Record' on a file in the vscode file manager
+
+We will need to extend types.ts output.ts and the create salesforce record should extend updateSalesforceRecord.ts
+
+I will need you to advise of any oter modifcaitons of other files to achieve these requirements (eg the vscode inteface files) 
+
+1. Articles: 
+Validations: File must be .md or .txt type. The file must exist in a subDirectory of the Articles folder.
+
+s_c__Article__c.Name = FileName
+s_c__Article__c.s_c__Title__c = FileName not inclucding file extension
+s_c__Article__c.s_c__Path__c = FileName (in lowercase, replacing spaces with hypens) not inclucding file extension
+s_c__Article__c.s_c__Store_Id__c = Id of s_c__Store__c.Name that = name of subDirectory
+s_c__Article__c.s_c__Body_Markdown__c = Text content of file
+
+2. Content Block: 
+Validations: File must be .liquid or .html or .txt type. The file must exist in a subDirectory of the Content_Blocks folder.
+
+s_c__Content_Block__c.Name = FileName not inclucding file extension
+s_c__Content_Block__c.s_c__Template__c = name of subDirectory
+s_c__Content_Block__c.s_c__Content_Markdown__c = Text content of file
+
+3. Style Block: 
+Validations: File must be .css type. The file must exist in a subDirectory of the Style_Blocks folder.
+
+s_c__Style_Block__c.Name = FileName not inclucding file extension
+s_c__Style_Block__c.s_c__Store_Id__c = Id of s_c__Store__c.Name that = name of subDirectory
+s_c__Style_Block__c.s_c__Content__c = Text content of file
+s_c__Style_Block__c.s_c__Active__c = True
+s_c__Style_Block__c.s_c__Global__c = True
+
+4. Script Block: 
+Validations: File must be .js type. The file must exist in a subDirectory of the Script_Blocks folder.
+
+s_c__Script_Block__c.Name = FileName not inclucding file extension
+s_c__Script_Block__c.s_c__Store_Id__c = Id of s_c__Store__c.Name that = name of subDirectory
+s_c__Script_Block__c.s_c__Content__c = Text content of file
+s_c__Script_Block__c.s_c__Active__c = True
+s_c__Script_Block__c.s_c__Global__c = True
+
+5. Theme Template: 
+Validations: File must be .liquid type. The file must exist in a subDirectory of the Theme_Templates folder.
+
+s_c__Theme_Template__c.Name = FileName not inclucding file extension
+s_c__Theme_Template__c.s_c__Theme_Id__c = Id of s_c__Theme_Id__r.Name that = name of subDirectory
+s_c__Theme_Template__c.s_c__Content__c = Text content of file
+s_c__Theme_Template__c.s_c__Key__c = string of the path after the name of the subDirectory including filename not inclucding file extension
+
+When the validations are passed and command is sent via API as per the updateSalesforceRecord.ts method but instead of update it is a create operation.
+This record and file has entries appended to the settings.json file as part of the map collection 
+
+Note: 
+
+queryOrg.ts creates a working folder and file structure which will need to be understood to influnce this function. 
+
+const fileDetailsMapping: FileDetails[] = [
+    { objectType: 's_c__Article__c', directory: 'Articles', subDirectory: 's_c__Store_Id__r.Name', nameField: 's_c__Slug__c', extension: 'md', field: 's_c__Body_Markdown__c' },
+    { objectType: 's_c__Content_Block__c', directory: 'Content_Blocks', subDirectory: 's_c__Template__c', nameField: 's_c__Identifier__c', extension: 'liquid', field: 's_c__Content_Markdown__c' },
+    { objectType: 's_c__Script_Block__c', directory: 'Script_Blocks', subDirectory: 's_c__Store_Id__r.Name', nameField: 'Name', extension: 'js', field: 's_c__Content__c' },
+    { objectType: 's_c__Style_Block__c', directory: 'Style_Blocks', subDirectory: 's_c__Store_Id__r.Name', nameField: 'Name', extension: 'css', field: 's_c__Content__c' },
+    { objectType: 's_c__Theme_Template__c', directory: 'Theme_Templates', subDirectory: 's_c__Theme_Id__r.Name', nameField: 's_c__Key__c', extension: 'liquid', field: 's_c__Content__c' }
+];
+
+which forms this Query:
+const query = `sfdx force:data:soql:query -q "SELECT Id, ${detail.nameField}, ${detail.field}, ${detail.subDirectory} FROM ${detail.objectType}" -o ${orgAlias} --json`;
+
+This is a return of the Query data structure:
+Query Data: {
+  "status": 0,
+  "result": {
+    "records": [
+      {
+        "attributes": {
+          "type": "s_c__Article__c",
+          "url": "/services/data/v61.0/sobjects/s_c__Article__c/a1SQE000000GWSB2A4"
+        },
+        "Id": "a1SQE000000GWSB2A4",
+        "s_c__Slug__c": "how-to-use-this-demo",
+        "s_c__Body_Markdown__c": "Content",
+        "s_c__Store_Id__r": {
+          "attributes": {
+            "type": "s_c__Store__c",
+            "url": "/services/data/v61.0/sobjects/s_c__Store__c/a2qQE000000kHFZYA2"
+          },
+          "Name": "StoreConnect Booth Store"
+        }
+      }
+    ],
+    "totalSize": 1,
+    "done": true
+  },
+  "warnings": []
+}
+Query Data: {
+  "status": 0,
+  "result": {
+    "records": [
+      {
+        "attributes": {
+          "type": "s_c__Content_Block__c",
+          "url": "/services/data/v61.0/sobjects/s_c__Content_Block__c/a1dQE000000JFrNYAW"
+        },
+        "Id": "a1dQE000000JFrNYAW",
+        "s_c__Identifier__c": "image-logo-2",
+        "s_c__Content_Markdown__c": "Content",
+        "s_c__Template__c": "image"
+      }
+    ],
+    "totalSize": 1,
+    "done": true
+  },
+  "warnings": []
+}
+Query Data: {
+  "status": 0,
+  "result": {
+    "records": [
+      {
+        "attributes": {
+          "type": "s_c__Script_Block__c",
+          "url": "/services/data/v61.0/sobjects/s_c__Script_Block__c/a2cQE00000DhU5KYAV"
+        },
+        "Id": "a2cQE00000DhU5KYAV",
+        "Name": "SC Live Setup",
+        "s_c__Content__c": "Content",
+        "s_c__Store_Id__r": {
+          "attributes": {
+            "type": "s_c__Store__c",
+            "url": "/services/data/v61.0/sobjects/s_c__Store__c/a2qQE000000kHFZYA2"
+          },
+          "Name": "StoreConnect Booth Store"
+        }
+      }
+    ],
+    "totalSize": 1,
+    "done": true
+  },
+  "warnings": []
+}
+Query Data: {
+  "status": 0,
+  "result": {
+    "records": [
+      {
+        "attributes": {
+          "type": "s_c__Style_Block__c",
+          "url": "/services/data/v61.0/sobjects/s_c__Style_Block__c/a2rQE0000001WvVYAU"
+        },
+        "Id": "a2rQE0000001WvVYAU",
+        "Name": "SC Image Text",
+        "s_c__Content__c": "Content",
+        "s_c__Store_Id__r": {
+          "attributes": {
+            "type": "s_c__Store__c",
+            "url": "/services/data/v61.0/sobjects/s_c__Store__c/a2qQE000000kHFZYA2"
+          },
+          "Name": "StoreConnect Booth Store"
+        }
+      }
+    ],
+    "totalSize": 1,
+    "done": true
+  },
+  "warnings": []
+}
+Query Data: {
+  "status": 0,
+  "result": {
+    "records": [
+      {
+        "attributes": {
+          "type": "s_c__Theme_Template__c",
+          "url": "/services/data/v61.0/sobjects/s_c__Theme_Template__c/a32QE0000001KeDYAU"
+        },
+        "Id": "a32QE0000001KeDYAU",
+        "s_c__Key__c": "snippets/shared/address_map",
+        "s_c__Content__c": "Content",
+        "s_c__Theme_Id__r": {
+          "attributes": {
+            "type": "s_c__Theme__c",
+            "url": "/services/data/v61.0/sobjects/s_c__Theme__c/a34QE000006tV4XYAU"
+          },
+          "Name": "SC - SE Theme"
+        }
+      }
+    ],
+    "totalSize": 1,
+    "done": true
+  },
+  "warnings": []
+}
+
+This is the folder and file struture:
+WorkspaceFolder
+├── .vscode
+│   └── settings.json
+├──[objectType: 's_c__Article__c', directory: 'Articles']
+│   └──[subDirectory: 's_c__Store_Id__r.Name']
+│       └──[nameField: 's_c__Slug__c', extension: 'md']
+├──[objectType: 's_c__Content_Block__c', directory: 'Content_Blocks']
+│   └──[subDirectory: 's_c__Template__c']
+│       └───[nameField: 's_c__Identifier__c',extension: 'liquid']
+├──[objectType: 's_c__Script_Block__c', directory: 'Script_Blocks']
+│   └──[subDirectory: 's_c__Store_Id__r.Name']
+│       └──[nameField: 'Name', extension: 'js']
+├──[objectType: 's_c__Style_Block__c', directory: 'Style_Blocks']
+│   └──[subDirectory: 's_c__Store_Id__r.Name']
+│       └──[nameField: 'Name', extension: 'css']
+└──[objectType: 's_c__Theme_Template__c', directory: 'Theme_Templates']
+    └──[subDirectory: 's_c__Theme_Id__r.Name']
+       └──[subdirectories and filename: nameField: 's_c__Key__c', extension: 'liquid']
+
+This is an example folder and file struture:
+WorkspaceFolder
+├── .vscode
+│   └── settings.json
+├── Articles
+│   └── StoreConnect Booth Store
+│       └── how-to-use-this-demo.md
+├── Content_Blocks
+│   ├── container
+│   ├── featured_products
+│   ├── html
+│   │   ├── animatedsvg.liquid
+│   │   ├── countdown-redirect.liquid
+│   │   ├── footer.liquid
+│   │   ├── hidden-price-apply.liquid
+│   │   ├── insta.liquid
+│   │   ├── login-form-block.liquid
+│   │   ├── plans.liquid
+│   │   ├── sc-live-setup.liquid
+│   │   ├── store-site-head-block.liquid
+│   │   ├── test-block.liquid
+│   │   ├── ticket.liquid
+│   │   ├── waves.liquid
+│   │   ├── web-to-case-markup.liquid
+│   │   └── web-to-lead-1.liquid
+│   ├── image
+│   ├── image_text_overlay
+│   ├── inf-logo-block
+│   ├── sc-fancy-center-video-hero
+│   │   └── fancy-center-video-hero.liquid
+│   ├── sc-standard-video-hero
+│   │   └── hero-image-with-text-overlay.liquid
+│   ├── slideshow
+│   └── text
+│       ├── story-2-text-result-1.liquid
+│       ├── story-3-text-result-2.liquid
+│       ├── story-4-text-result-3.liquid
+│       ├── story-6-text-problem-solution-1.liquid
+│       └── story-7-text-problem-solution-2.liquid
+├── Script_Blocks
+│   └── StoreConnect Booth Store
+│       └── SC Live Setup.js
+├── Style_Blocks
+│   ├── Bold Sport
+│   │   ├── BoldSport-CSS.css
+│   │   └── StoreRootCSS - BoldSport.css
+│   └── StoreConnect Booth Store
+│       ├── AnimatedSVG.css
+│       ├── SC Article Card Crop Aspect.css
+│       ├── SC Constrain Width.css
+│       ├── SC Fancy Center Video Hero.css
+│       ├── SC Featured Product Slider.css
+│       ├── SC Image Text.css
+│       ├── SC Image and Heading.css
+│       ├── SC Live Setup.css
+│       ├── SC Product Card Crop Aspect.css
+│       ├── SC Standard Video Hero.css
+│       ├── SC Video Hero 4 Option.css
+│       ├── StoreHomePageCSS.css
+│       ├── StoreRootCSS - Booth Store.css
+│       └── StoreRootCSS - SC - Demo Store.css
+└── Theme_Templates
+    ├── BoldSport
+    │   ├── blocks
+    │   │   ├── FeaturedCategories.liquid
+    │   │   ├── ImageBesideText.liquid
+    │   │   └── VideoSection.liquid
+    │   ├── layouts
+    │   │   └── theme.liquid
+    │   └── snippets
+    │       ├── header
+    │       │   └── dropdown
+    │       │       ├── account.liquid
+    │       │       ├── cart.liquid
+    │       │       ├── cta.liquid
+    │       │       └── search.liquid
+    │       ├── header.liquid
+    │       └── svg_background.liquid
+    ├── Corporate Booth Theme
+    │   ├── blocks
+    │   │   ├── container.liquid
+    │   │   ├── featured_articles.liquid
+    │   │   ├── featured_categories.liquid
+    │   │   ├── featured_products.liquid
+    │   │   ├── hero.liquid
+    │   │   ├── icon-cards.liquid
+    │   │   ├── image.liquid
+    │   │   ├── image_beside_text.liquid
+    │   │   ├── sc-standard-video-hero.liquid
+    │   │   └── text.liquid
+    │   ├── layouts
+    │   │   └── theme.liquid
+    │   ├── pages
+    │   │   ├── article.liquid
+    │   │   └── page.liquid
+    │   └── snippets
+    │       ├── articles
+    │       │   └── card.liquid
+    │       ├── checkout
+    │       │   └── payment_information
+    │       │       └── pay_later_form.liquid
+    │       ├── footer.liquid
+    │       ├── header
+    │       │   └── dropdown
+    │       │       ├── account.liquid
+    │       │       ├── cart.liquid
+    │       │       ├── cta.liquid
+    │       │       └── search.liquid
+    │       ├── header.liquid
+    │       ├── icons
+    │       │   └── chevron.liquid
+    │       ├── menu
+    │       │   └── menu.liquid
+    │       ├── products
+    │       │   ├── card
+    │       │   │   └── buttons.liquid
+    │       │   └── card.liquid
+    │       └── shared
+    │           ├── address_map.liquid
+    │           ├── category_card.liquid
+    │           ├── fonts.liquid
+    │           ├── icons
+    │           │   ├── cart.liquid
+    │           │   ├── chevron.liquid
+    │           │   ├── facebook.liquid
+    │           │   ├── hamburger.liquid
+    │           │   ├── linkedin.liquid
+    │           │   ├── search.liquid
+    │           │   ├── twitter.liquid
+    │           │   ├── user.liquid
+    │           │   └── youtube.liquid
+    │           ├── image_caption.liquid
+    │           ├── page_header.liquid
+    │           └── social.liquid
+    └── SC - SE Theme
+        ├── blocks
+        │   ├── container.liquid
+        │   ├── featured_articles.liquid
+        │   ├── featured_categories.liquid
+        │   ├── featured_products.liquid
+        │   ├── hero.liquid
+        │   ├── icon-cards.liquid
+        │   ├── image.liquid
+        │   ├── image_beside_text.liquid
+        │   ├── inf-logo-block.liquid
+        │   ├── sc-cta-action-banner.liquid
+        │   ├── sc-fancy-center-video-hero.liquid
+        │   ├── sc-feat-prod-slider.liquid
+        │   ├── sc-imageLeft-textRight.liquid
+        │   ├── sc-imageRight-textLeft.liquid
+        │   ├── sc-img-header.liquid
+        │   ├── sc-standard-video-hero.liquid
+        │   ├── sc-video-hero-four-option.liquid
+        │   └── text.liquid
+        ├── layouts
+        │   └── theme.liquid
+        ├── pages
+        │   ├── article.liquid
+        │   ├── cart.liquid
+        │   └── page.liquid
+        └── snippets
+            ├── articles
+            │   └── card.liquid
+            ├── footer.liquid
+            ├── header
+            │   └── dropdown
+            │       ├── account.liquid
+            │       ├── cart.liquid
+            │       ├── cta.liquid
+            │       └── search.liquid
+            ├── header.liquid
+            ├── icons
+            │   └── chevron.liquid
+            ├── menu.liquid
+            ├── products
+            │   ├── card
+            │   │   └── buttons.liquid
+            │   ├── card.liquid
+            │   └── product
+            │       ├── inventory.liquid
+            │       └── stock_level_indicator.liquid
+            └── shared
+                ├── address_map.liquid
+                ├── category_card.liquid
+                ├── icons
+                │   ├── cart.liquid
+                │   ├── chevron.liquid
+                │   ├── facebook.liquid
+                │   ├── hamburger.liquid
+                │   ├── linkedin.liquid
+                │   ├── search.liquid
+                │   ├── twitter.liquid
+                │   ├── user.liquid
+                │   └── youtube.liquid
+                ├── image_caption.liquid
+                ├── page_header.liquid
+                └── social.liquid
+
+

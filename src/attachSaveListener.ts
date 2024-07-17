@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { log, showError } from './outputs';
 import { Mapping } from './types';
-import { updateSalesforceRecord } from './updateSalesforceRecord'; 
+import { updateSalesforceRecord } from './salesforceAPI'; 
 
 class WatcherManager {
     private static activeWatchers = new Map<string, vscode.Disposable>();

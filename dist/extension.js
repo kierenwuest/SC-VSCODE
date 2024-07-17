@@ -35,7 +35,8 @@ const authenticate_1 = __webpack_require__(2);
 const linkAndSync_1 = __webpack_require__(6);
 const queryOrg_1 = __webpack_require__(49);
 const outputs_1 = __webpack_require__(4);
-const attachSaveListener_1 = __webpack_require__(7); // Correct import for WatcherManager
+const attachSaveListener_1 = __webpack_require__(7);
+const newRecord_1 = __webpack_require__(8);
 function activate(context) {
     // Register commands
     let authenticateCommand = vscode.commands.registerCommand('sc-vsc-webdev.authenticate', authenticate_1.authenticate);
@@ -63,6 +64,10 @@ function deactivate() {
     (0, outputs_1.showInfo)("SCWD Goodbye"); // Optionally inform the user that the extension is unloading
 }
 exports.deactivate = deactivate;
+function activate(context) {
+    context.subscriptions.push(newRecord_1.newRecord);
+}
+exports.activate = activate;
 
 
 /***/ }),
@@ -328,7 +333,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.WatcherManager = void 0;
 const vscode = __importStar(__webpack_require__(1));
 const outputs_1 = __webpack_require__(4);
-const updateSalesforceRecord_1 = __webpack_require__(8);
+const salesforceAPI_1 = __webpack_require__(56);
 class WatcherManager {
     static activeWatchers = new Map();
     static ignoreInitialChange = new Set(); // To ignore the initial change after creation
@@ -351,7 +356,7 @@ class WatcherManager {
             }
             if (uri.fsPath === mapping.localPath) {
                 (0, outputs_1.log)(`File Changed: ${uri.fsPath}`);
-                (0, updateSalesforceRecord_1.updateSalesforceRecord)(mapping, uri, orgAlias);
+                (0, salesforceAPI_1.updateSalesforceRecord)(mapping, uri, orgAlias);
             }
             else {
                 (0, outputs_1.log)(`Ignored File Change: ${uri.fsPath}`);
@@ -411,76 +416,94 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.updateSalesforceRecord = void 0;
+exports.newRecord = void 0;
 const vscode = __importStar(__webpack_require__(1));
-const axios_1 = __importDefault(__webpack_require__(9));
-const child_process_1 = __webpack_require__(3);
+const fs = __importStar(__webpack_require__(18));
+const path = __importStar(__webpack_require__(5));
+const salesforceAPI_1 = __webpack_require__(56);
 const outputs_1 = __webpack_require__(4);
-function getSalesforceSession(orgAlias) {
-    const command = `sfdx force:org:display --json --targetusername ${orgAlias}`;
-    return new Promise((resolve, reject) => {
-        (0, child_process_1.exec)(command, (error, stdout, stderr) => {
-            if (error) {
-                reject(stderr || error.message);
-                return;
-            }
-            try {
-                const data = JSON.parse(stdout);
-                resolve({ accessToken: data.result.accessToken, instanceUrl: data.result.instanceUrl });
-            }
-            catch (error) {
-                if (error instanceof Error) {
-                    reject(`Failed to parse response: ${error.message}`);
-                }
-                else {
-                    reject(`An unexpected parsing error occurred`);
-                }
-            }
-        });
-    });
-}
-async function updateSalesforceRecord(mapping, uri, orgAlias) {
+const fileDetailsMapping = [
+    { objectType: 's_c__Article__c', directory: 'Articles', subDirectory: 's_c__Store_Id__r.Name', nameField: 's_c__Slug__c', extension: 'md', field: 's_c__Body_Markdown__c' },
+    { objectType: 's_c__Content_Block__c', directory: 'Content_Blocks', subDirectory: 's_c__Template__c', nameField: 's_c__Identifier__c', extension: 'liquid', field: 's_c__Content_Markdown__c' },
+    { objectType: 's_c__Script_Block__c', directory: 'Script_Blocks', subDirectory: 's_c__Store_Id__r.Name', nameField: 'Name', extension: 'js', field: 's_c__Content__c' },
+    { objectType: 's_c__Style_Block__c', directory: 'Style_Blocks', subDirectory: 's_c__Store_Id__r.Name', nameField: 'Name', extension: 'css', field: 's_c__Content__c' },
+    { objectType: 's_c__Theme_Template__c', directory: 'Theme_Templates', subDirectory: 's_c__Theme_Id__r.Name', nameField: 's_c__Key__c', extension: 'liquid', field: 's_c__Content__c' }
+];
+exports.newRecord = vscode.commands.registerCommand('extension.newRecord', async (uri) => {
+    const filePath = uri.fsPath;
+    const fileName = path.basename(filePath);
+    const fileExtension = path.extname(fileName).substring(1);
+    const fileDirectory = path.dirname(filePath);
+    const parentDirectory = path.basename(fileDirectory);
+    const grandparentDirectory = path.basename(path.dirname(fileDirectory));
+    let fileDetails;
+    for (const detail of fileDetailsMapping) {
+        if (filePath.includes(detail.directory) && fileExtension === detail.extension) {
+            fileDetails = detail;
+            break;
+        }
+    }
+    if (!fileDetails) {
+        (0, outputs_1.showError)('Invalid file type or location.');
+        return;
+    }
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    const record = createRecordPayload(fileDetails, fileName, fileContent, parentDirectory, grandparentDirectory);
     try {
-        const doc = await vscode.workspace.openTextDocument(uri);
-        const content = doc.getText();
-        const session = await getSalesforceSession(orgAlias);
-        const url = `${session.instanceUrl}/services/data/v53.0/sobjects/${mapping.salesforceObject}/${mapping.salesforceRecordId}`;
-        const data = {
-            [mapping.salesforceField]: content
-        };
-        const response = await (0, axios_1.default)({
-            method: 'patch',
-            url,
-            data,
-            headers: {
-                'Authorization': `Bearer ${session.accessToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        if (response.status === 204) {
-            (0, outputs_1.showInfo)('Salesforce record updated successfully.');
-        }
-        else {
-            (0, outputs_1.showError)(`Failed to update record: ${response.status}`);
-        }
+        const org = await (0, salesforceAPI_1.getActiveOrg)();
+        await (0, salesforceAPI_1.createSalesforceRecord)(org, fileDetails.objectType, record);
+        (0, outputs_1.showSuccess)(`Record created for ${fileName}`);
     }
     catch (error) {
-        if (axios_1.default.isAxiosError(error) && error.response) {
-            (0, outputs_1.showError)(`Error during Salesforce update: ${error.response.data}`);
-        }
-        else if (error instanceof Error) {
-            (0, outputs_1.showError)(`Update error: ${error.message}`);
-        }
-        else {
-            (0, outputs_1.showError)(`An unexpected error occurred`);
-        }
+        (0, outputs_1.showError)(`Failed to create record: ${error.message}`);
+    }
+});
+function createRecordPayload(details, fileName, fileContent, parentDir, grandparentDir) {
+    const nameWithoutExtension = path.basename(fileName, path.extname(fileName));
+    const pathWithoutExtension = nameWithoutExtension.toLowerCase().replace(/\s+/g, '-');
+    switch (details.objectType) {
+        case 's_c__Article__c':
+            return {
+                Name: fileName,
+                s_c__Title__c: nameWithoutExtension,
+                s_c__Path__c: pathWithoutExtension,
+                s_c__Store_Id__c: parentDir, // Assuming store name maps directly to ID, adjust as necessary
+                s_c__Body_Markdown__c: fileContent
+            };
+        case 's_c__Content_Block__c':
+            return {
+                Name: nameWithoutExtension,
+                s_c__Template__c: parentDir,
+                s_c__Content_Markdown__c: fileContent
+            };
+        case 's_c__Style_Block__c':
+            return {
+                Name: nameWithoutExtension,
+                s_c__Store_Id__c: parentDir,
+                s_c__Content__c: fileContent,
+                s_c__Active__c: true,
+                s_c__Global__c: true
+            };
+        case 's_c__Script_Block__c':
+            return {
+                Name: nameWithoutExtension,
+                s_c__Store_Id__c: parentDir,
+                s_c__Content__c: fileContent,
+                s_c__Active__c: true,
+                s_c__Global__c: true
+            };
+        case 's_c__Theme_Template__c':
+            return {
+                Name: nameWithoutExtension,
+                s_c__Theme_Id__c: parentDir,
+                s_c__Content__c: fileContent,
+                s_c__Key__c: `${grandparentDir}/${parentDir}/${nameWithoutExtension}`
+            };
+        default:
+            throw new Error('Unknown object type');
     }
 }
-exports.updateSalesforceRecord = updateSalesforceRecord;
 
 
 /***/ }),
@@ -8497,11 +8520,11 @@ const p_queue_1 = __importDefault(__webpack_require__(50));
 const attachSaveListener_1 = __webpack_require__(7);
 const updateQueue = new p_queue_1.default({ concurrency: 1 });
 const fileDetailsMapping = [
-    { objectType: 's_c__Content_Block__c', field: 's_c__Content_Markdown__c', extension: 'liquid', nameField: 's_c__Identifier__c', directory: 'Content_Blocks', subDirectory: 's_c__Template__c' },
-    { objectType: 's_c__Theme_Template__c', field: 's_c__Content__c', extension: 'liquid', nameField: 's_c__Key__c', directory: 'Theme_Templates', subDirectory: 's_c__Theme_Id__r.Name' },
-    { objectType: 's_c__Style_Block__c', field: 's_c__Content__c', extension: 'css', nameField: 'Name', directory: 'Style_Blocks', subDirectory: 's_c__Store_Id__r.Name' },
-    { objectType: 's_c__Article__c', field: 's_c__Body_Markdown__c', extension: 'md', nameField: 's_c__Slug__c', directory: 'Articles', subDirectory: 's_c__Store_Id__r.Name' },
-    { objectType: 's_c__Script_Block__c', field: 's_c__Content__c', extension: 'js', nameField: 'Name', directory: 'Script_Blocks', subDirectory: 's_c__Store_Id__r.Name' }
+    { objectType: 's_c__Article__c', directory: 'Articles', subDirectory: 's_c__Store_Id__r.Name', nameField: 's_c__Slug__c', extension: 'md', field: 's_c__Body_Markdown__c' },
+    { objectType: 's_c__Content_Block__c', directory: 'Content_Blocks', subDirectory: 's_c__Template__c', nameField: 's_c__Identifier__c', extension: 'liquid', field: 's_c__Content_Markdown__c' },
+    { objectType: 's_c__Script_Block__c', directory: 'Script_Blocks', subDirectory: 's_c__Store_Id__r.Name', nameField: 'Name', extension: 'js', field: 's_c__Content__c' },
+    { objectType: 's_c__Style_Block__c', directory: 'Style_Blocks', subDirectory: 's_c__Store_Id__r.Name', nameField: 'Name', extension: 'css', field: 's_c__Content__c' },
+    { objectType: 's_c__Theme_Template__c', directory: 'Theme_Templates', subDirectory: 's_c__Theme_Id__r.Name', nameField: 's_c__Key__c', extension: 'liquid', field: 's_c__Content__c' }
 ];
 async function queryOrg() {
     const orgAlias = vscode.workspace.getConfiguration('storeConnect').get('orgAlias');
@@ -9466,6 +9489,112 @@ function lowerBound(array, value, comparator) {
     }
     return first;
 }
+
+
+/***/ }),
+/* 56 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createSalesforceRecord = exports.updateSalesforceRecord = void 0;
+const vscode = __importStar(__webpack_require__(1));
+const axios_1 = __importDefault(__webpack_require__(9));
+const child_process_1 = __webpack_require__(3);
+const outputs_1 = __webpack_require__(4);
+function getSalesforceSession(orgAlias) {
+    const command = `sfdx force:org:display --json --targetusername ${orgAlias}`;
+    return new Promise((resolve, reject) => {
+        (0, child_process_1.exec)(command, (error, stdout, stderr) => {
+            if (error) {
+                reject(stderr || error.message);
+                return;
+            }
+            try {
+                const data = JSON.parse(stdout);
+                resolve({ accessToken: data.result.accessToken, instanceUrl: data.result.instanceUrl });
+            }
+            catch (error) {
+                if (error instanceof Error) {
+                    reject(`Failed to parse response: ${error.message}`);
+                }
+                else {
+                    reject(`An unexpected parsing error occurred`);
+                }
+            }
+        });
+    });
+}
+async function updateSalesforceRecord(mapping, uri, orgAlias) {
+    try {
+        const doc = await vscode.workspace.openTextDocument(uri);
+        const content = doc.getText();
+        const session = await getSalesforceSession(orgAlias);
+        const url = `${session.instanceUrl}/services/data/v53.0/sobjects/${mapping.salesforceObject}/${mapping.salesforceRecordId}`;
+        const data = {
+            [mapping.salesforceField]: content
+        };
+        const response = await (0, axios_1.default)({
+            method: 'patch',
+            url,
+            data,
+            headers: {
+                'Authorization': `Bearer ${session.accessToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        if (response.status === 204) {
+            (0, outputs_1.showInfo)('Salesforce record updated successfully.');
+        }
+        else {
+            (0, outputs_1.showError)(`Failed to update record: ${response.status}`);
+        }
+    }
+    catch (error) {
+        if (axios_1.default.isAxiosError(error) && error.response) {
+            (0, outputs_1.showError)(`Error during Salesforce update: ${error.response.data}`);
+        }
+        else if (error instanceof Error) {
+            (0, outputs_1.showError)(`Update error: ${error.message}`);
+        }
+        else {
+            (0, outputs_1.showError)(`An unexpected error occurred`);
+        }
+    }
+}
+exports.updateSalesforceRecord = updateSalesforceRecord;
+async function createSalesforceRecord(org, objectType, record) {
+    const conn = org.getConnection();
+    await conn.sobject(objectType).create(record);
+}
+exports.createSalesforceRecord = createSalesforceRecord;
 
 
 /***/ })
