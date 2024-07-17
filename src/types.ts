@@ -18,3 +18,12 @@ export interface SalesforceSession {
   accessToken: string;
   instanceUrl: string;
 }
+
+export interface FileDetails {
+  objectType: string;
+  directory: string;
+  subDirectory: string;
+  nameField: string;
+  extension: string;
+  field: string;
+}

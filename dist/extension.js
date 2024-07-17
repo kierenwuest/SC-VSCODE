@@ -450,13 +450,13 @@ exports.newRecord = vscode.commands.registerCommand('extension.newRecord', async
     }
     const fileContent = fs.readFileSync(filePath, 'utf8');
     const record = createRecordPayload(fileDetails, fileName, fileContent, parentDirectory, grandparentDirectory);
+    const orgAlias = 'yourOrgAlias'; // Replace with your actual org alias
     try {
-        const org = await (0, salesforceAPI_1.getActiveOrg)();
-        await (0, salesforceAPI_1.createSalesforceRecord)(org, fileDetails.objectType, record);
+        await (0, salesforceAPI_1.createSalesforceRecord)(fileDetails.objectType, record, orgAlias);
         (0, outputs_1.showSuccess)(`Record created for ${fileName}`);
     }
     catch (error) {
-        (0, outputs_1.showError)(`Failed to create record: ${error.message}`);
+        (0, outputs_1.showError)(`Failed to create record: ${error instanceof Error ? error.message : 'An unexpected error occurred'}`);
     }
 });
 function createRecordPayload(details, fileName, fileContent, parentDir, grandparentDir) {
@@ -9590,9 +9590,38 @@ async function updateSalesforceRecord(mapping, uri, orgAlias) {
     }
 }
 exports.updateSalesforceRecord = updateSalesforceRecord;
-async function createSalesforceRecord(org, objectType, record) {
-    const conn = org.getConnection();
-    await conn.sobject(objectType).create(record);
+async function createSalesforceRecord(objectType, record, orgAlias) {
+    try {
+        const session = await getSalesforceSession(orgAlias);
+        const url = `${session.instanceUrl}/services/data/v53.0/sobjects/${objectType}`;
+        const response = await (0, axios_1.default)({
+            method: 'post',
+            url,
+            data: record,
+            headers: {
+                'Authorization': `Bearer ${session.accessToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        if (response.status === 201) {
+            (0, outputs_1.showSuccess)(`Record created: ${response.data.id}`);
+        }
+        else {
+            (0, outputs_1.showError)(`Failed to create record: ${response.status}`);
+        }
+    }
+    catch (error) {
+        if (axios_1.default.isAxiosError(error) && error.response) {
+            (0, outputs_1.showError)(`Error during Salesforce creation: ${error.response.data}`);
+        }
+        else if (error instanceof Error) {
+            (0, outputs_1.showError)(`Creation error: ${error.message}`);
+        }
+        else {
+            (0, outputs_1.showError)(`An unexpected error occurred`);
+        }
+        throw error;
+    }
 }
 exports.createSalesforceRecord = createSalesforceRecord;
 

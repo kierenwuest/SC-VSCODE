@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import axios from 'axios';
 import { exec } from 'child_process';
-import { showError, showInfo } from './outputs';
+import { showError, showInfo, showSuccess } from './outputs';
 import { Mapping, SalesforceSession } from './types'; 
 
 function getSalesforceSession(orgAlias: string): Promise<SalesforceSession> {
@@ -25,6 +25,7 @@ function getSalesforceSession(orgAlias: string): Promise<SalesforceSession> {
         });
     });
 }
+
 
 export async function updateSalesforceRecord(mapping: Mapping, uri: vscode.Uri, orgAlias: string) {
     try {
@@ -63,7 +64,33 @@ export async function updateSalesforceRecord(mapping: Mapping, uri: vscode.Uri, 
     }
 }
 
-export async function createSalesforceRecord(org: any, objectType: string, record: any) {
-    const conn = org.getConnection();
-    await conn.sobject(objectType).create(record);
+export async function createSalesforceRecord(objectType: string, record: any, orgAlias: string): Promise<void> {
+  try {
+      const session = await getSalesforceSession(orgAlias);
+      const url = `${session.instanceUrl}/services/data/v53.0/sobjects/${objectType}`;
+      const response = await axios({
+          method: 'post',
+          url,
+          data: record,
+          headers: {
+              'Authorization': `Bearer ${session.accessToken}`,
+              'Content-Type': 'application/json'
+          }
+      });
+
+      if (response.status === 201) {
+          showSuccess(`Record created: ${response.data.id}`);
+      } else {
+          showError(`Failed to create record: ${response.status}`);
+      }
+  } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+          showError(`Error during Salesforce creation: ${error.response.data}`);
+      } else if (error instanceof Error) {
+          showError(`Creation error: ${error.message}`);
+      } else {
+          showError(`An unexpected error occurred`);
+      }
+      throw error;
+  }
 }

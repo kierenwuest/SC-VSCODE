@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getActiveOrg, createSalesforceRecord } from '../salesforceAPI';
+import { createSalesforceRecord } from '../salesforceAPI';
 import { showError, showSuccess } from '../outputs';
 import { FileDetails } from '../types';
 
@@ -37,13 +37,13 @@ export const newRecord = vscode.commands.registerCommand('extension.newRecord', 
     const fileContent = fs.readFileSync(filePath, 'utf8');
 
     const record = createRecordPayload(fileDetails, fileName, fileContent, parentDirectory, grandparentDirectory);
+    const orgAlias = 'yourOrgAlias'; // Replace with your actual org alias
 
     try {
-        const org = await getActiveOrg();
-        await createSalesforceRecord(org, fileDetails.objectType, record);
+        await createSalesforceRecord(fileDetails.objectType, record, orgAlias);
         showSuccess(`Record created for ${fileName}`);
     } catch (error) {
-        showError(`Failed to create record: ${error.message}`);
+        showError(`Failed to create record: ${error instanceof Error ? error.message : 'An unexpected error occurred'}`); 
     }
 });
 
