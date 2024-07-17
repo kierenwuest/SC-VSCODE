@@ -62,4 +62,3 @@ export async function updateSalesforceRecord(mapping: Mapping, uri: vscode.Uri, 
         }
     }
 }
-

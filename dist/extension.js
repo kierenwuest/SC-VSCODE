@@ -36,13 +36,14 @@ const linkAndSync_1 = __webpack_require__(6);
 const queryOrg_1 = __webpack_require__(49);
 const outputs_1 = __webpack_require__(4);
 const attachSaveListener_1 = __webpack_require__(7);
-const newRecord_1 = __webpack_require__(8);
+const newRecord_1 = __webpack_require__(57);
 function activate(context) {
     // Register commands
     let authenticateCommand = vscode.commands.registerCommand('sc-vsc-webdev.authenticate', authenticate_1.authenticate);
     let linkAndSyncCommand = vscode.commands.registerCommand('sc-vsc-webdev.linkAndSync', linkAndSync_1.linkAndSync);
     let queryOrgCommand = vscode.commands.registerCommand('sc-vsc-webdev.queryOrg', queryOrg_1.queryOrg);
     context.subscriptions.push(authenticateCommand, linkAndSyncCommand, queryOrgCommand);
+    context.subscriptions.push(newRecord_1.newRecord);
     // Set up existing file watchers
     setupExistingWatchers(context);
     // Inform user that extension is ready
@@ -64,10 +65,6 @@ function deactivate() {
     (0, outputs_1.showInfo)("SCWD Goodbye"); // Optionally inform the user that the extension is unloading
 }
 exports.deactivate = deactivate;
-function activate(context) {
-    context.subscriptions.push(newRecord_1.newRecord);
-}
-exports.activate = activate;
 
 
 /***/ }),
@@ -183,10 +180,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.showInfo = exports.showError = exports.clearOutput = exports.showOutput = exports.log = void 0;
-// outputs.ts
+exports.showSuccess = exports.showInfo = exports.showError = exports.clearOutput = exports.showOutput = exports.log = void 0;
 const vscode = __importStar(__webpack_require__(1));
-// Create a singleton output channel instance
 const outputChannel = vscode.window.createOutputChannel("My Extension Logs");
 function log(message) {
     outputChannel.appendLine(message);
@@ -202,14 +197,19 @@ function clearOutput() {
 exports.clearOutput = clearOutput;
 function showError(message) {
     vscode.window.showErrorMessage(message);
-    log(message); // Also log the error to the output channel
+    log(message);
 }
 exports.showError = showError;
 function showInfo(message) {
     vscode.window.showInformationMessage(message);
-    log(message); // Also log the info to the output channel
+    log(message);
 }
 exports.showInfo = showInfo;
+function showSuccess(message) {
+    vscode.window.showInformationMessage(message);
+    log(message);
+}
+exports.showSuccess = showSuccess;
 
 
 /***/ }),
@@ -333,7 +333,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.WatcherManager = void 0;
 const vscode = __importStar(__webpack_require__(1));
 const outputs_1 = __webpack_require__(4);
-const salesforceAPI_1 = __webpack_require__(56);
+const salesforceAPI_1 = __webpack_require__(8);
 class WatcherManager {
     static activeWatchers = new Map();
     static ignoreInitialChange = new Set(); // To ignore the initial change after creation
@@ -416,94 +416,124 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.newRecord = void 0;
+exports.createSalesforceRecord = exports.updateSalesforceRecord = exports.querySalesforceRecord = void 0;
 const vscode = __importStar(__webpack_require__(1));
-const fs = __importStar(__webpack_require__(18));
-const path = __importStar(__webpack_require__(5));
-const salesforceAPI_1 = __webpack_require__(56);
+const axios_1 = __importDefault(__webpack_require__(9));
+const child_process_1 = __webpack_require__(3);
 const outputs_1 = __webpack_require__(4);
-const fileDetailsMapping = [
-    { objectType: 's_c__Article__c', directory: 'Articles', subDirectory: 's_c__Store_Id__r.Name', nameField: 's_c__Slug__c', extension: 'md', field: 's_c__Body_Markdown__c' },
-    { objectType: 's_c__Content_Block__c', directory: 'Content_Blocks', subDirectory: 's_c__Template__c', nameField: 's_c__Identifier__c', extension: 'liquid', field: 's_c__Content_Markdown__c' },
-    { objectType: 's_c__Script_Block__c', directory: 'Script_Blocks', subDirectory: 's_c__Store_Id__r.Name', nameField: 'Name', extension: 'js', field: 's_c__Content__c' },
-    { objectType: 's_c__Style_Block__c', directory: 'Style_Blocks', subDirectory: 's_c__Store_Id__r.Name', nameField: 'Name', extension: 'css', field: 's_c__Content__c' },
-    { objectType: 's_c__Theme_Template__c', directory: 'Theme_Templates', subDirectory: 's_c__Theme_Id__r.Name', nameField: 's_c__Key__c', extension: 'liquid', field: 's_c__Content__c' }
-];
-exports.newRecord = vscode.commands.registerCommand('extension.newRecord', async (uri) => {
-    const filePath = uri.fsPath;
-    const fileName = path.basename(filePath);
-    const fileExtension = path.extname(fileName).substring(1);
-    const fileDirectory = path.dirname(filePath);
-    const parentDirectory = path.basename(fileDirectory);
-    const grandparentDirectory = path.basename(path.dirname(fileDirectory));
-    let fileDetails;
-    for (const detail of fileDetailsMapping) {
-        if (filePath.includes(detail.directory) && fileExtension === detail.extension) {
-            fileDetails = detail;
-            break;
+function getSalesforceSession(orgAlias) {
+    const command = `sfdx force:org:display --json --targetusername ${orgAlias}`;
+    return new Promise((resolve, reject) => {
+        (0, child_process_1.exec)(command, (error, stdout, stderr) => {
+            if (error) {
+                reject(stderr || error.message);
+                return;
+            }
+            try {
+                const data = JSON.parse(stdout);
+                resolve({ accessToken: data.result.accessToken, instanceUrl: data.result.instanceUrl });
+            }
+            catch (error) {
+                if (error instanceof Error) {
+                    reject(`Failed to parse response: ${error.message}`);
+                }
+                else {
+                    reject(`An unexpected parsing error occurred`);
+                }
+            }
+        });
+    });
+}
+async function querySalesforceRecord(query, orgAlias) {
+    const session = await getSalesforceSession(orgAlias);
+    const url = `${session.instanceUrl}/services/data/v53.0/query?q=${encodeURIComponent(query)}`;
+    const response = await (0, axios_1.default)({
+        method: 'get',
+        url,
+        headers: {
+            'Authorization': `Bearer ${session.accessToken}`,
+            'Content-Type': 'application/json'
+        }
+    });
+    return response.data.records;
+}
+exports.querySalesforceRecord = querySalesforceRecord;
+async function updateSalesforceRecord(mapping, uri, orgAlias) {
+    try {
+        const doc = await vscode.workspace.openTextDocument(uri);
+        const content = doc.getText();
+        const session = await getSalesforceSession(orgAlias);
+        const url = `${session.instanceUrl}/services/data/v53.0/sobjects/${mapping.salesforceObject}/${mapping.salesforceRecordId}`;
+        const data = {
+            [mapping.salesforceField]: content
+        };
+        const response = await (0, axios_1.default)({
+            method: 'patch',
+            url,
+            data,
+            headers: {
+                'Authorization': `Bearer ${session.accessToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        if (response.status === 204) {
+            (0, outputs_1.showInfo)('Salesforce record updated successfully.');
+        }
+        else {
+            (0, outputs_1.showError)(`Failed to update record: ${response.status}`);
         }
     }
-    if (!fileDetails) {
-        (0, outputs_1.showError)('Invalid file type or location.');
-        return;
-    }
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    const record = createRecordPayload(fileDetails, fileName, fileContent, parentDirectory, grandparentDirectory);
-    const orgAlias = 'yourOrgAlias'; // Replace with your actual org alias
-    try {
-        await (0, salesforceAPI_1.createSalesforceRecord)(fileDetails.objectType, record, orgAlias);
-        (0, outputs_1.showSuccess)(`Record created for ${fileName}`);
-    }
     catch (error) {
-        (0, outputs_1.showError)(`Failed to create record: ${error instanceof Error ? error.message : 'An unexpected error occurred'}`);
-    }
-});
-function createRecordPayload(details, fileName, fileContent, parentDir, grandparentDir) {
-    const nameWithoutExtension = path.basename(fileName, path.extname(fileName));
-    const pathWithoutExtension = nameWithoutExtension.toLowerCase().replace(/\s+/g, '-');
-    switch (details.objectType) {
-        case 's_c__Article__c':
-            return {
-                Name: fileName,
-                s_c__Title__c: nameWithoutExtension,
-                s_c__Path__c: pathWithoutExtension,
-                s_c__Store_Id__c: parentDir, // Assuming store name maps directly to ID, adjust as necessary
-                s_c__Body_Markdown__c: fileContent
-            };
-        case 's_c__Content_Block__c':
-            return {
-                Name: nameWithoutExtension,
-                s_c__Template__c: parentDir,
-                s_c__Content_Markdown__c: fileContent
-            };
-        case 's_c__Style_Block__c':
-            return {
-                Name: nameWithoutExtension,
-                s_c__Store_Id__c: parentDir,
-                s_c__Content__c: fileContent,
-                s_c__Active__c: true,
-                s_c__Global__c: true
-            };
-        case 's_c__Script_Block__c':
-            return {
-                Name: nameWithoutExtension,
-                s_c__Store_Id__c: parentDir,
-                s_c__Content__c: fileContent,
-                s_c__Active__c: true,
-                s_c__Global__c: true
-            };
-        case 's_c__Theme_Template__c':
-            return {
-                Name: nameWithoutExtension,
-                s_c__Theme_Id__c: parentDir,
-                s_c__Content__c: fileContent,
-                s_c__Key__c: `${grandparentDir}/${parentDir}/${nameWithoutExtension}`
-            };
-        default:
-            throw new Error('Unknown object type');
+        if (axios_1.default.isAxiosError(error) && error.response) {
+            (0, outputs_1.showError)(`Error during Salesforce update: ${error.response.data}`);
+        }
+        else if (error instanceof Error) {
+            (0, outputs_1.showError)(`Update error: ${error.message}`);
+        }
+        else {
+            (0, outputs_1.showError)(`An unexpected error occurred`);
+        }
     }
 }
+exports.updateSalesforceRecord = updateSalesforceRecord;
+async function createSalesforceRecord(objectType, record, orgAlias) {
+    try {
+        const session = await getSalesforceSession(orgAlias);
+        const url = `${session.instanceUrl}/services/data/v53.0/sobjects/${objectType}`;
+        const response = await (0, axios_1.default)({
+            method: 'post',
+            url,
+            data: record,
+            headers: {
+                'Authorization': `Bearer ${session.accessToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        if (response.status === 201) {
+            (0, outputs_1.showSuccess)(`Record created: ${response.data.id}`);
+        }
+        else {
+            (0, outputs_1.showError)(`Failed to create record: ${response.status}`);
+        }
+    }
+    catch (error) {
+        if (axios_1.default.isAxiosError(error) && error.response) {
+            (0, outputs_1.showError)(`Error during Salesforce creation: ${error.response.data}`);
+        }
+        else if (error instanceof Error) {
+            (0, outputs_1.showError)(`Creation error: ${error.message}`);
+        }
+        else {
+            (0, outputs_1.showError)(`An unexpected error occurred`);
+        }
+        throw error;
+    }
+}
+exports.createSalesforceRecord = createSalesforceRecord;
 
 
 /***/ }),
@@ -8516,23 +8546,17 @@ const vscode = __importStar(__webpack_require__(1));
 const child_process_1 = __webpack_require__(3);
 const path = __importStar(__webpack_require__(5));
 const outputs_1 = __webpack_require__(4);
-const p_queue_1 = __importDefault(__webpack_require__(50));
+const types_1 = __webpack_require__(50);
+const p_queue_1 = __importDefault(__webpack_require__(51));
 const attachSaveListener_1 = __webpack_require__(7);
 const updateQueue = new p_queue_1.default({ concurrency: 1 });
-const fileDetailsMapping = [
-    { objectType: 's_c__Article__c', directory: 'Articles', subDirectory: 's_c__Store_Id__r.Name', nameField: 's_c__Slug__c', extension: 'md', field: 's_c__Body_Markdown__c' },
-    { objectType: 's_c__Content_Block__c', directory: 'Content_Blocks', subDirectory: 's_c__Template__c', nameField: 's_c__Identifier__c', extension: 'liquid', field: 's_c__Content_Markdown__c' },
-    { objectType: 's_c__Script_Block__c', directory: 'Script_Blocks', subDirectory: 's_c__Store_Id__r.Name', nameField: 'Name', extension: 'js', field: 's_c__Content__c' },
-    { objectType: 's_c__Style_Block__c', directory: 'Style_Blocks', subDirectory: 's_c__Store_Id__r.Name', nameField: 'Name', extension: 'css', field: 's_c__Content__c' },
-    { objectType: 's_c__Theme_Template__c', directory: 'Theme_Templates', subDirectory: 's_c__Theme_Id__r.Name', nameField: 's_c__Key__c', extension: 'liquid', field: 's_c__Content__c' }
-];
 async function queryOrg() {
     const orgAlias = vscode.workspace.getConfiguration('storeConnect').get('orgAlias');
     if (!orgAlias) {
         (0, outputs_1.showError)('No Salesforce organization alias is configured.');
         return;
     }
-    for (const detail of fileDetailsMapping) {
+    for (const detail of types_1.fileDetailsMapping) {
         const query = `sfdx force:data:soql:query -q "SELECT Id, ${detail.nameField}, ${detail.field}, ${detail.subDirectory} FROM ${detail.objectType}" -o ${orgAlias} --json`;
         (0, child_process_1.exec)(query, async (error, stdout, stderr) => {
             if (error) {
@@ -8609,6 +8633,23 @@ async function updateSettingsJson(localPath, objectType, field, recordId) {
 
 /***/ }),
 /* 50 */
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.fileDetailsMapping = void 0;
+exports.fileDetailsMapping = [
+    { objectType: 's_c__Article__c', directory: 'Articles', subDirectory: 's_c__Store_Id__r.Name', nameField: 's_c__Slug__c', extension: 'md', field: 's_c__Body_Markdown__c' },
+    { objectType: 's_c__Content_Block__c', directory: 'Content_Blocks', subDirectory: 's_c__Template__c', nameField: 's_c__Identifier__c', extension: 'liquid', field: 's_c__Content_Markdown__c' },
+    { objectType: 's_c__Script_Block__c', directory: 'Script_Blocks', subDirectory: 's_c__Store_Id__r.Name', nameField: 'Name', extension: 'js', field: 's_c__Content__c' },
+    { objectType: 's_c__Style_Block__c', directory: 'Style_Blocks', subDirectory: 's_c__Store_Id__r.Name', nameField: 'Name', extension: 'css', field: 's_c__Content__c' },
+    { objectType: 's_c__Theme_Template__c', directory: 'Theme_Templates', subDirectory: 's_c__Theme_Id__r.Name', nameField: 's_c__Key__c', extension: 'liquid', field: 's_c__Content__c' }
+];
+
+
+/***/ }),
+/* 51 */
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -8616,9 +8657,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (/* binding */ PQueue)
 /* harmony export */ });
-/* harmony import */ var eventemitter3__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(51);
-/* harmony import */ var p_timeout__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(53);
-/* harmony import */ var _priority_queue_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(54);
+/* harmony import */ var eventemitter3__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(52);
+/* harmony import */ var p_timeout__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(54);
+/* harmony import */ var _priority_queue_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(55);
 
 
 
@@ -8932,7 +8973,7 @@ class PQueue extends eventemitter3__WEBPACK_IMPORTED_MODULE_0__.EventEmitter {
 
 
 /***/ }),
-/* 51 */
+/* 52 */
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -8941,7 +8982,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   EventEmitter: () => (/* reexport default export from named module */ _index_js__WEBPACK_IMPORTED_MODULE_0__),
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
-/* harmony import */ var _index_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(52);
+/* harmony import */ var _index_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(53);
 
 
 
@@ -8949,7 +8990,7 @@ __webpack_require__.r(__webpack_exports__);
 
 
 /***/ }),
-/* 52 */
+/* 53 */
 /***/ ((module) => {
 
 "use strict";
@@ -9292,7 +9333,7 @@ if (true) {
 
 
 /***/ }),
-/* 53 */
+/* 54 */
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -9421,7 +9462,7 @@ function pTimeout(promise, options) {
 
 
 /***/ }),
-/* 54 */
+/* 55 */
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -9429,7 +9470,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (/* binding */ PriorityQueue)
 /* harmony export */ });
-/* harmony import */ var _lower_bound_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(55);
+/* harmony import */ var _lower_bound_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(56);
 
 class PriorityQueue {
     #queue = [];
@@ -9463,7 +9504,7 @@ class PriorityQueue {
 
 
 /***/ }),
-/* 55 */
+/* 56 */
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -9492,7 +9533,7 @@ function lowerBound(array, value, comparator) {
 
 
 /***/ }),
-/* 56 */
+/* 57 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -9520,110 +9561,125 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.createSalesforceRecord = exports.updateSalesforceRecord = void 0;
+exports.newRecord = void 0;
 const vscode = __importStar(__webpack_require__(1));
-const axios_1 = __importDefault(__webpack_require__(9));
-const child_process_1 = __webpack_require__(3);
+const fs = __importStar(__webpack_require__(18));
+const path = __importStar(__webpack_require__(5));
+const salesforceAPI_1 = __webpack_require__(8);
 const outputs_1 = __webpack_require__(4);
-function getSalesforceSession(orgAlias) {
-    const command = `sfdx force:org:display --json --targetusername ${orgAlias}`;
-    return new Promise((resolve, reject) => {
-        (0, child_process_1.exec)(command, (error, stdout, stderr) => {
-            if (error) {
-                reject(stderr || error.message);
-                return;
-            }
-            try {
-                const data = JSON.parse(stdout);
-                resolve({ accessToken: data.result.accessToken, instanceUrl: data.result.instanceUrl });
-            }
-            catch (error) {
-                if (error instanceof Error) {
-                    reject(`Failed to parse response: ${error.message}`);
-                }
-                else {
-                    reject(`An unexpected parsing error occurred`);
-                }
-            }
-        });
-    });
-}
-async function updateSalesforceRecord(mapping, uri, orgAlias) {
+const types_1 = __webpack_require__(50);
+exports.newRecord = vscode.commands.registerCommand('sc-vsc-webdev.newRecord', async (uri) => {
+    const filePath = uri.fsPath;
+    const fileName = path.basename(filePath);
+    const fileExtension = path.extname(fileName).substring(1);
+    const fileDirectory = path.dirname(filePath);
+    const parentDirectory = path.basename(fileDirectory);
+    const grandparentDirectory = path.basename(path.dirname(fileDirectory));
+    let fileDetails;
+    for (const detail of types_1.fileDetailsMapping) {
+        if (filePath.includes(detail.directory) && fileExtension === detail.extension) {
+            fileDetails = detail;
+            break;
+        }
+    }
+    if (!fileDetails) {
+        (0, outputs_1.showError)('Invalid file type or location.');
+        return;
+    }
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    const orgAlias = vscode.workspace.getConfiguration('storeConnect').get('orgAlias');
+    if (!orgAlias) {
+        (0, outputs_1.showError)('Salesforce Org Alias is not configured.');
+        return;
+    }
     try {
-        const doc = await vscode.workspace.openTextDocument(uri);
-        const content = doc.getText();
-        const session = await getSalesforceSession(orgAlias);
-        const url = `${session.instanceUrl}/services/data/v53.0/sobjects/${mapping.salesforceObject}/${mapping.salesforceRecordId}`;
-        const data = {
-            [mapping.salesforceField]: content
-        };
-        const response = await (0, axios_1.default)({
-            method: 'patch',
-            url,
-            data,
-            headers: {
-                'Authorization': `Bearer ${session.accessToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        if (response.status === 204) {
-            (0, outputs_1.showInfo)('Salesforce record updated successfully.');
+        let parentId = null;
+        if (fileDetails.objectType !== 's_c__Content_Block__c') {
+            parentId = await getParentId(fileDetails, parentDirectory, orgAlias);
         }
-        else {
-            (0, outputs_1.showError)(`Failed to update record: ${response.status}`);
-        }
+        const record = createRecordPayload(fileDetails, fileName, fileContent, parentDirectory, parentId, grandparentDirectory);
+        await (0, salesforceAPI_1.createSalesforceRecord)(fileDetails.objectType, record, orgAlias);
+        (0, outputs_1.showSuccess)(`Record created for ${fileName}`);
     }
     catch (error) {
-        if (axios_1.default.isAxiosError(error) && error.response) {
-            (0, outputs_1.showError)(`Error during Salesforce update: ${error.response.data}`);
+        if (error.response && error.response.data) {
+            (0, outputs_1.showError)(`Failed to create record: ${JSON.stringify(error.response.data)}`);
         }
         else if (error instanceof Error) {
-            (0, outputs_1.showError)(`Update error: ${error.message}`);
+            (0, outputs_1.showError)(`Failed to create record: ${error.message}`);
         }
         else {
-            (0, outputs_1.showError)(`An unexpected error occurred`);
+            (0, outputs_1.showError)('An unknown error occurred during record creation.');
         }
+    }
+});
+async function getParentId(details, parentName, orgAlias) {
+    let objectName;
+    switch (details.objectType) {
+        case 's_c__Article__c':
+        case 's_c__Script_Block__c':
+        case 's_c__Style_Block__c':
+            objectName = 's_c__Store__c';
+            break;
+        case 's_c__Theme_Template__c':
+            objectName = 's_c__Theme__c';
+            break;
+        default:
+            throw new Error('Unsupported object type for parent ID query');
+    }
+    const query = `SELECT Id FROM ${objectName} WHERE Name = '${parentName}' LIMIT 1`;
+    const records = await (0, salesforceAPI_1.querySalesforceRecord)(query, orgAlias);
+    if (records.length === 0) {
+        throw new Error(`No ${objectName} found with name ${parentName}`);
+    }
+    return records[0].Id;
+}
+function createRecordPayload(details, fileName, fileContent, parentDir, parentId, grandparentDir) {
+    const nameWithoutExtension = path.basename(fileName, path.extname(fileName));
+    const pathWithoutExtension = nameWithoutExtension.toLowerCase().replace(/\s+/g, '-');
+    switch (details.objectType) {
+        case 's_c__Article__c':
+            return {
+                Name: fileName,
+                s_c__Title__c: nameWithoutExtension,
+                s_c__Path__c: pathWithoutExtension,
+                s_c__Store_Id__c: parentId,
+                s_c__Body_Markdown__c: fileContent
+            };
+        case 's_c__Content_Block__c':
+            return {
+                Name: nameWithoutExtension,
+                s_c__Template__c: parentDir,
+                s_c__Content_Markdown__c: fileContent
+            };
+        case 's_c__Style_Block__c':
+            return {
+                Name: nameWithoutExtension,
+                s_c__Store_Id__c: parentId,
+                s_c__Content__c: fileContent,
+                s_c__Active__c: true,
+                s_c__Global__c: true
+            };
+        case 's_c__Script_Block__c':
+            return {
+                Name: nameWithoutExtension,
+                s_c__Store_Id__c: parentId,
+                s_c__Content__c: fileContent,
+                s_c__Active__c: true,
+                s_c__Global__c: true
+            };
+        case 's_c__Theme_Template__c':
+            return {
+                Name: nameWithoutExtension,
+                s_c__Theme_Id__c: parentId,
+                s_c__Content__c: fileContent,
+                s_c__Key__c: `${grandparentDir}/${parentDir}/${nameWithoutExtension}`
+            };
+        default:
+            throw new Error('Unknown object type');
     }
 }
-exports.updateSalesforceRecord = updateSalesforceRecord;
-async function createSalesforceRecord(objectType, record, orgAlias) {
-    try {
-        const session = await getSalesforceSession(orgAlias);
-        const url = `${session.instanceUrl}/services/data/v53.0/sobjects/${objectType}`;
-        const response = await (0, axios_1.default)({
-            method: 'post',
-            url,
-            data: record,
-            headers: {
-                'Authorization': `Bearer ${session.accessToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        if (response.status === 201) {
-            (0, outputs_1.showSuccess)(`Record created: ${response.data.id}`);
-        }
-        else {
-            (0, outputs_1.showError)(`Failed to create record: ${response.status}`);
-        }
-    }
-    catch (error) {
-        if (axios_1.default.isAxiosError(error) && error.response) {
-            (0, outputs_1.showError)(`Error during Salesforce creation: ${error.response.data}`);
-        }
-        else if (error instanceof Error) {
-            (0, outputs_1.showError)(`Creation error: ${error.message}`);
-        }
-        else {
-            (0, outputs_1.showError)(`An unexpected error occurred`);
-        }
-        throw error;
-    }
-}
-exports.createSalesforceRecord = createSalesforceRecord;
 
 
 /***/ })

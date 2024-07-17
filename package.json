@@ -48,8 +48,21 @@
       {
         "command": "sc-vsc-webdev.queryOrg",
         "title": "SCWD: Query Org"
+      },
+      {
+        "command": "sc-vsc-webdev.newRecord",
+        "title": "SCWD: Create As New SC Record"
       }
     ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "sc-vsc-webdev.newRecord",
+          "when": "resourceLangId == markdown || resourceLangId == plaintext || resourceLangId == liquid || resourceLangId == html || resourceLangId == css || resourceLangId == javascript",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "StoreConnect Settings",
       "properties": {

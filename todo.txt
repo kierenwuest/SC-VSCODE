@@ -1,0 +1,10 @@
+Activate per orgAlias as a bottom bar icon
+Query Org as bottom bar icon dependent on Activate
+New Record as bottom bar icon dependent on Activate
+when acitve run sf update for sf cli update dependency
+defaut output selection to My Extension Logs
+rename My Extension Logs to SCWD Logs
+Set newRecord as SCWD command
+Remove link and sync command
+Make dynamic to workspace folder where project folder = orgAlias
+release plugin

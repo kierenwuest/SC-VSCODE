@@ -13,12 +13,14 @@ export function activate(context: vscode.ExtensionContext) {
     let queryOrgCommand = vscode.commands.registerCommand('sc-vsc-webdev.queryOrg', queryOrg);
 
     context.subscriptions.push(authenticateCommand, linkAndSyncCommand, queryOrgCommand);
+    context.subscriptions.push(newRecord);
 
     // Set up existing file watchers
     setupExistingWatchers(context);
 
     // Inform user that extension is ready
     showInfo("SCWD Ready");
+
 }
 
 function setupExistingWatchers(context: vscode.ExtensionContext) {
@@ -36,8 +38,4 @@ function setupExistingWatchers(context: vscode.ExtensionContext) {
 
 export function deactivate() {
     showInfo("SCWD Goodbye"); // Optionally inform the user that the extension is unloading
-}
-
-export function activate(context: vscode.ExtensionContext) {
-    context.subscriptions.push(newRecord);
 }

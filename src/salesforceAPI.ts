@@ -26,6 +26,21 @@ function getSalesforceSession(orgAlias: string): Promise<SalesforceSession> {
     });
 }
 
+export async function querySalesforceRecord(query: string, orgAlias: string): Promise<any[]> {
+  const session = await getSalesforceSession(orgAlias);
+  const url = `${session.instanceUrl}/services/data/v53.0/query?q=${encodeURIComponent(query)}`;
+
+  const response = await axios({
+      method: 'get',
+      url,
+      headers: {
+          'Authorization': `Bearer ${session.accessToken}`,
+          'Content-Type': 'application/json'
+      }
+  });
+
+  return response.data.records;
+}
 
 export async function updateSalesforceRecord(mapping: Mapping, uri: vscode.Uri, orgAlias: string) {
     try {

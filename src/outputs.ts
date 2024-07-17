@@ -1,7 +1,5 @@
-// outputs.ts
 import * as vscode from 'vscode';
 
-// Create a singleton output channel instance
 const outputChannel = vscode.window.createOutputChannel("My Extension Logs");
 
 export function log(message: string): void {
@@ -18,10 +16,15 @@ export function clearOutput(): void {
 
 export function showError(message: string): void {
     vscode.window.showErrorMessage(message);
-    log(message);  // Also log the error to the output channel
+    log(message);
 }
 
 export function showInfo(message: string): void {
     vscode.window.showInformationMessage(message);
-    log(message);  // Also log the info to the output channel
+    log(message); 
+}
+
+export function showSuccess(message: string): void {
+    vscode.window.showInformationMessage(message);
+    log(message); 
 }
