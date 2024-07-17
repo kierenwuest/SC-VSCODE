@@ -79,7 +79,7 @@ export async function updateSalesforceRecord(mapping: Mapping, uri: vscode.Uri, 
     }
 }
 
-export async function createSalesforceRecord(objectType: string, record: any, orgAlias: string): Promise<void> {
+export async function createSalesforceRecord(objectType: string, record: any, orgAlias: string): Promise<any> {
   try {
       const session = await getSalesforceSession(orgAlias);
       const url = `${session.instanceUrl}/services/data/v53.0/sobjects/${objectType}`;
@@ -95,6 +95,7 @@ export async function createSalesforceRecord(objectType: string, record: any, or
 
       if (response.status === 201) {
           showSuccess(`Record created: ${response.data.id}`);
+          return response.data.id;
       } else {
           showError(`Failed to create record: ${response.status}`);
       }

@@ -515,6 +515,7 @@ async function createSalesforceRecord(objectType, record, orgAlias) {
         });
         if (response.status === 201) {
             (0, outputs_1.showSuccess)(`Record created: ${response.data.id}`);
+            return response.data.id;
         }
         else {
             (0, outputs_1.showError)(`Failed to create record: ${response.status}`);
@@ -9569,13 +9570,20 @@ const path = __importStar(__webpack_require__(5));
 const salesforceAPI_1 = __webpack_require__(8);
 const outputs_1 = __webpack_require__(4);
 const types_1 = __webpack_require__(50);
+const attachSaveListener_1 = __webpack_require__(7);
 exports.newRecord = vscode.commands.registerCommand('sc-vsc-webdev.newRecord', async (uri) => {
     const filePath = uri.fsPath;
     const fileName = path.basename(filePath);
     const fileExtension = path.extname(fileName).substring(1);
     const fileDirectory = path.dirname(filePath);
-    const parentDirectory = path.basename(fileDirectory);
-    const grandparentDirectory = path.basename(path.dirname(fileDirectory));
+    // Extract the theme directory (directly under Theme_Templates)
+    const themeTemplatesIndex = filePath.split(path.sep).indexOf('Theme_Templates') + 1;
+    const themeDirectory = filePath.split(path.sep)[themeTemplatesIndex];
+    console.log('filePath:', filePath);
+    console.log('fileName:', fileName);
+    console.log('fileExtension:', fileExtension);
+    console.log('fileDirectory:', fileDirectory);
+    console.log('themeDirectory:', themeDirectory);
     let fileDetails;
     for (const detail of types_1.fileDetailsMapping) {
         if (filePath.includes(detail.directory) && fileExtension === detail.extension) {
@@ -9595,12 +9603,29 @@ exports.newRecord = vscode.commands.registerCommand('sc-vsc-webdev.newRecord', a
     }
     try {
         let parentId = null;
-        if (fileDetails.objectType !== 's_c__Content_Block__c') {
-            parentId = await getParentId(fileDetails, parentDirectory, orgAlias);
+        if (fileDetails.objectType === 's_c__Theme_Template__c') {
+            parentId = await getThemeId(themeDirectory, orgAlias);
         }
-        const record = createRecordPayload(fileDetails, fileName, fileContent, parentDirectory, parentId, grandparentDirectory);
-        await (0, salesforceAPI_1.createSalesforceRecord)(fileDetails.objectType, record, orgAlias);
+        else if (fileDetails.objectType !== 's_c__Content_Block__c') {
+            parentId = await getParentId(fileDetails, path.basename(fileDirectory), orgAlias);
+        }
+        console.log('parentId:', parentId);
+        const record = createRecordPayload(fileDetails, fileName, fileContent, fileDirectory, parentId, themeDirectory, filePath);
+        console.log('record:', record);
+        const recordId = await (0, salesforceAPI_1.createSalesforceRecord)(fileDetails.objectType, record, orgAlias);
+        // Ensure recordId is a string and correctly captured
+        if (typeof recordId !== 'string') {
+            throw new Error('Failed to retrieve the Salesforce record ID.');
+        }
         (0, outputs_1.showSuccess)(`Record created for ${fileName}`);
+        // Attach save listener and update settings.json
+        const mapping = {
+            localPath: filePath,
+            salesforceObject: fileDetails.objectType,
+            salesforceField: fileDetails.field,
+            salesforceRecordId: recordId // Ensure this is now a string
+        };
+        attachSaveListener_1.WatcherManager.attach(mapping, orgAlias);
     }
     catch (error) {
         if (error.response && error.response.data) {
@@ -9614,6 +9639,15 @@ exports.newRecord = vscode.commands.registerCommand('sc-vsc-webdev.newRecord', a
         }
     }
 });
+async function getThemeId(themeName, orgAlias) {
+    const query = `SELECT Id FROM s_c__Theme__c WHERE Name = '${themeName}' LIMIT 1`;
+    const records = await (0, salesforceAPI_1.querySalesforceRecord)(query, orgAlias);
+    if (records.length === 0) {
+        throw new Error(`No s_c__Theme__c found with name ${themeName}`);
+    }
+    console.log('getThemeId records:', records);
+    return records[0].Id;
+}
 async function getParentId(details, parentName, orgAlias) {
     let objectName;
     switch (details.objectType) {
@@ -9622,26 +9656,26 @@ async function getParentId(details, parentName, orgAlias) {
         case 's_c__Style_Block__c':
             objectName = 's_c__Store__c';
             break;
-        case 's_c__Theme_Template__c':
-            objectName = 's_c__Theme__c';
-            break;
         default:
             throw new Error('Unsupported object type for parent ID query');
     }
     const query = `SELECT Id FROM ${objectName} WHERE Name = '${parentName}' LIMIT 1`;
     const records = await (0, salesforceAPI_1.querySalesforceRecord)(query, orgAlias);
+    console.log('getParentId records:', records);
     if (records.length === 0) {
         throw new Error(`No ${objectName} found with name ${parentName}`);
     }
     return records[0].Id;
 }
-function createRecordPayload(details, fileName, fileContent, parentDir, parentId, grandparentDir) {
+function createRecordPayload(details, fileName, fileContent, fileDir, parentId, themeDir, filePath) {
     const nameWithoutExtension = path.basename(fileName, path.extname(fileName));
     const pathWithoutExtension = nameWithoutExtension.toLowerCase().replace(/\s+/g, '-');
+    const themePath = path.relative(path.join(fileDir, '../../'), filePath).replace(/\\/g, '/');
+    console.log('themePath:', themePath);
     switch (details.objectType) {
         case 's_c__Article__c':
             return {
-                Name: fileName,
+                Name: nameWithoutExtension,
                 s_c__Title__c: nameWithoutExtension,
                 s_c__Path__c: pathWithoutExtension,
                 s_c__Store_Id__c: parentId,
@@ -9650,7 +9684,7 @@ function createRecordPayload(details, fileName, fileContent, parentDir, parentId
         case 's_c__Content_Block__c':
             return {
                 Name: nameWithoutExtension,
-                s_c__Template__c: parentDir,
+                s_c__Template__c: path.basename(fileDir),
                 s_c__Content_Markdown__c: fileContent
             };
         case 's_c__Style_Block__c':
@@ -9671,10 +9705,9 @@ function createRecordPayload(details, fileName, fileContent, parentDir, parentId
             };
         case 's_c__Theme_Template__c':
             return {
-                Name: nameWithoutExtension,
                 s_c__Theme_Id__c: parentId,
                 s_c__Content__c: fileContent,
-                s_c__Key__c: `${grandparentDir}/${parentDir}/${nameWithoutExtension}`
+                s_c__Key__c: `${themePath}/${nameWithoutExtension}`
             };
         default:
             throw new Error('Unknown object type');
