@@ -198,7 +198,6 @@ Query Data: {
   "warnings": []
 }
 
-This is the folder and file struture:
 WorkspaceFolder
 ├── .vscode
 │   └── settings.json
@@ -217,6 +216,7 @@ WorkspaceFolder
 └──[objectType: 's_c__Theme_Template__c', directory: 'Theme_Templates']
     └──[subDirectory: 's_c__Theme_Id__r.Name']
        └──[subdirectories and filename: nameField: 's_c__Key__c', extension: 'liquid']
+
 
 This is an example folder and file struture:
 WorkspaceFolder
@@ -417,3 +417,180 @@ WorkspaceFolder
                 └── social.liquid
 
 
+
+This is the folder and file struture:
+WorkspaceFolder
+├── .vscode
+│   └── settings.json
+├──[objectType: 's_c__Article__c', directory: 'Articles']
+│   └──[subDirectory: 's_c__Store_Id__r.Name']
+│       └──[nameField: 's_c__Slug__c', extension: 'md']
+├──[objectType: 's_c__Content_Block__c', directory: 'Content_Blocks']
+│   └──[subDirectory: 's_c__Template__c']
+│       └───[nameField: 's_c__Identifier__c',extension: 'liquid']
+├──[objectType: 's_c__Script_Block__c', directory: 'Script_Blocks']
+│   └──[subDirectory: 's_c__Store_Id__r.Name']
+│       └──[nameField: 'Name', extension: 'js']
+├──[objectType: 's_c__Style_Block__c', directory: 'Style_Blocks']
+│   └──[subDirectory: 's_c__Store_Id__r.Name']
+│       └──[nameField: 'Name', extension: 'css']
+└──[objectType: 's_c__Theme_Template__c', directory: 'Theme_Templates']
+    └──[subDirectory: 's_c__Theme_Id__r.Name']
+       └──[subdirectories and filename: nameField: 's_c__Key__c', extension: 'liquid']
+
+
+I would like to change the way the settings.json is structured
+Existing Json structure
+{
+  "storeConnect.orgAlias": "NewDemo",
+  "storeConnect.fileMappings": [
+    {
+      "localPath": "/Users/kierenwuest/Code/StoreConnect/Projects/SE Demo Projects/SC Web Development/NewDemo/Style_Blocks/StoreConnect Booth Store/SC Image Text.css",
+      "salesforceObject": "s_c__Style_Block__c",
+      "salesforceField": "s_c__Content__c",
+      "salesforceRecordId": "a2rQE0000001WvVYAU"
+    },{...}
+  ]
+}
+
+based on this folder and file struture:
+WorkspaceFolder
+├── .vscode
+│   └── settings.json
+├──[objectType: 's_c__Article__c', directory: 'Articles']
+│   └──[subDirectory: 's_c__Store_Id__r.Name']
+│       └──[nameField: 's_c__Slug__c', extension: 'md']
+├──[objectType: 's_c__Content_Block__c', directory: 'Content_Blocks']
+│   └──[subDirectory: 's_c__Template__c']
+│       └───[nameField: 's_c__Identifier__c',extension: 'liquid']
+├──[objectType: 's_c__Script_Block__c', directory: 'Script_Blocks']
+│   └──[subDirectory: 's_c__Store_Id__r.Name']
+│       └──[nameField: 'Name', extension: 'js']
+├──[objectType: 's_c__Style_Block__c', directory: 'Style_Blocks']
+│   └──[subDirectory: 's_c__Store_Id__r.Name']
+│       └──[nameField: 'Name', extension: 'css']
+└──[objectType: 's_c__Theme_Template__c', directory: 'Theme_Templates']
+    └──[subDirectory: 's_c__Theme_Id__r.Name']
+       └──[subdirectories and filename: nameField: 's_c__Key__c', extension: 'liquid']
+
+COnsidering the may be more than one Org/Workfolder
+Level 1:
+"storeConnect.orgAlias":"",
+"orgWorkfolder.Path":"", // New parameter
+"cliOrgStatus.Path":"", // New parameter
+"Articles":[], // New branch, please suggest
+"Content_Blocks":[], // New branch, please suggest
+"Script_Blocks"[]:, // New branch, please suggest
+"Style_Blocks"[]:, // New branch, please suggest
+"Theme_Templates":[], // New branch, please suggest
+
+Please suggest a subsequent structure that models the file and folder structure and includes file/record info as per:
+  "storeConnect.fileMappings": [
+    {
+      "localPath": "/Users/kierenwuest/Code/StoreConnect/Projects/SE Demo Projects/SC Web Development/NewDemo/Style_Blocks/StoreConnect Booth Store/SC Image Text.css",
+      "salesforceObject": "s_c__Style_Block__c",
+      "salesforceField": "s_c__Content__c",
+      "salesforceRecordId": "a2rQE0000001WvVYAU"
+    }]
+
+Can you give me an exmaple json to show me your suggestion on structure
+
+Explanation:
+Root Level:
+
+"storeConnect.orgAlias": The alias for the Salesforce organization.
+"orgWorkfolder.Path": The path to the organization work folder.
+"cliOrgStatus": Status of the Salesforce CLI connection. This will be updated based on the result of a sfdx force:org query on the activate command.
+Articles:
+
+Organized by s_c__Store_Id__r.Name.
+Each store name (e.g., "StoreConnect Booth Store") contains articles as files (e.g., "how-to-use-this-demo.md") with metadata (localPath, salesforceObject, salesforceField, salesforceRecordId).
+Content_Blocks:
+
+Organized by s_c__Template__c.
+Each template type (e.g., "image") contains content blocks as files (e.g., "animatedsvg.liquid") with metadata.
+Script_Blocks:
+
+Organized by s_c__Store_Id__r.Name.
+Each store name (e.g., "StoreConnect Booth Store") contains script blocks as files (e.g., "SC Live Setup.js") with metadata.
+Style_Blocks:
+
+Organized by s_c__Store_Id__r.Name.
+Each store name (e.g., "StoreConnect Booth Store") contains style blocks as files (e.g., "SC Image Text.css") with metadata.
+Theme_Templates:
+
+Organized by s_c__Theme_Id__r.Name.
+Each theme name (e.g., "SC - SE Theme") contains theme templates as files (e.g., "snippets/shared/address_map.liquid") with metadata.
+
+Key Points:
+The new structure is hierarchical and follows the folder structure closely.
+Each category (Articles, Content_Blocks, etc.) is organized by relevant sub-directory keys (s_c__Store_Id__r.Name, s_c__Template__c, etc.).
+Each file under these categories has associated metadata for the local path, Salesforce object, field, and record ID.
+
+
+
+{
+  "storeConnect.orgAlias": "NewDemo",
+  "orgWorkfolder.Path": "/Users/kierenwuest/Code/StoreConnect/Projects/SE Demo Projects/SC Web Development/NewDemo",
+  "cliOrgStatus": "Connected", // This will not be a path, but a query to sfdx force:org on activate command then update json. 
+  "Articles": {
+    "s_c__Store_Id__r.Name": {
+      "StoreConnect Booth Store": {
+        "how-to-use-this-demo.md": {
+          "localPath": "/Users/kierenwuest/Code/StoreConnect/Projects/SE Demo Projects/SC Web Development/NewDemo/Articles/StoreConnect Booth Store/how-to-use-this-demo.md",
+          "salesforceObject": "s_c__Article__c",
+          "salesforceField": "s_c__Body_Markdown__c",
+          "salesforceRecordId": "a1SQE000000GWSB2A4"
+        }  
+      }
+    }
+  },
+  "Content_Blocks": {
+    "s_c__Template__c": {
+      "image": {
+        "animatedsvg.liquid": {
+          "localPath": "/Users/kierenwuest/Code/StoreConnect/Projects/SE Demo Projects/SC Web Development/NewDemo/Content_Blocks/image/animatedsvg.liquid",
+          "salesforceObject": "s_c__Content_Block__c",
+          "salesforceField": "s_c__Content_Markdown__c",
+          "salesforceRecordId": "a1dQE000000NrhxYAC"
+        }
+      }
+    }
+  },
+  "Script_Blocks": {
+    "s_c__Store_Id__r.Name": {
+      "StoreConnect Booth Store": {
+        "SC Live Setup.js": {
+          "localPath": "/Users/kierenwuest/Code/StoreConnect/Projects/SE Demo Projects/SC Web Development/NewDemo/Script_Blocks/StoreConnect Booth Store/SC Live Setup.js",
+          "salesforceObject": "s_c__Script_Block__c",
+          "salesforceField": "s_c__Content__c",
+          "salesforceRecordId": "a2cQE00000DhU5KYAV"
+        }
+      }
+    }
+  },
+  "Style_Blocks": {
+    "s_c__Store_Id__r.Name": {
+      "StoreConnect Booth Store": {
+        "SC Image Text.css": {
+          "localPath": "/Users/kierenwuest/Code/StoreConnect/Projects/SE Demo Projects/SC Web Development/NewDemo/Style_Blocks/StoreConnect Booth Store/SC Image Text.css",
+          "salesforceObject": "s_c__Style_Block__c",
+          "salesforceField": "s_c__Content__c",
+          "salesforceRecordId": "a2rQE0000001WvVYAU"
+        }
+      }
+    }
+  },
+  "Theme_Templates": {
+    "s_c__Theme_Id__r.Name": {
+      "SC - SE Theme": {
+        "snippets/shared/address_map.liquid": {
+          "localPath": "/Users/kierenwuest/Code/StoreConnect/Projects/SE Demo Projects/SC Web Development/NewDemo/Theme_Templates/SC - SE Theme/snippets/shared/address_map.liquid",
+          "salesforceObject": "s_c__Theme_Template__c",
+          "salesforceField": "s_c__Content__c",
+          "salesforceRecordId": "a32QE0000001KeDYAU"
+        }
+      }
+    }
+  }
+}

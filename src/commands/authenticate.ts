@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import { log, showError, showInfo } from '../outputs';
+import * as fs from 'fs';
 import * as path from 'path';
+import { baseSettings } from '../types';
 
-export function authenticate() {
+export async function authenticate() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
         showError("No workspace folder is open. Please open a project folder and try again.");
@@ -13,7 +15,9 @@ export function authenticate() {
     const folderName = path.basename(workspaceFolders[0].uri.fsPath);
     const alias = folderName.replace(/\s+/g, '_');
 
-    const command = `sfdx force:auth:web:login -a ${alias} -r https://login.salesforce.com`;
+    const orgAlias = vscode.workspace.getConfiguration('storeConnect').get<string>('orgAlias') || alias;
+
+    const command = `sfdx force:auth:web:login -a ${orgAlias}`;
     exec(command, (error, stdout, stderr) => {
         if (error) {
             showError(`Authentication failed: ${error.message}`);
@@ -24,11 +28,18 @@ export function authenticate() {
             return;
         }
         if (stdout.includes("Successfully authorized")) {
-            showInfo(`Authenticated successfully. Org alias set to "${alias}".`);
+            showInfo(`Authenticated successfully. Org alias set to "${orgAlias}".`);
             const config = vscode.workspace.getConfiguration('storeConnect');
-            config.update('orgAlias', alias, vscode.ConfigurationTarget.Workspace)  // Save the alias to the workspace settings
+            config.update('orgAlias', orgAlias, vscode.ConfigurationTarget.Workspace)
                 .then(() => log('Org alias saved to workspace settings.'),
-                      error => showError('Failed to save org alias to workspace settings: ' + error));
+                    error => showError('Failed to save org alias to workspace settings: ' + error));
+
+            // Initialize settings.json
+            const settingsPath = path.join(workspaceFolders[0].uri.fsPath, '.vscode', 'settings.json');
+            const settings = baseSettings(orgAlias, workspaceFolders[0].uri.fsPath, "Connected");
+
+            fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+            showInfo(`Settings initialized for org alias: ${orgAlias}`);
         } else {
             showError('Authentication was not successful. Please check the output for more information.');
         }

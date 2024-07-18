@@ -38,12 +38,12 @@
   "contributes": {
     "commands": [
       {
-        "command": "sc-vsc-webdev.authenticate",
-        "title": "SCWD: Authenticate"
+        "command": "sc-vsc-webdev.activateSCWD",
+        "title": "SCWD: Activate or Deactivate"
       },
       {
-        "command": "sc-vsc-webdev.linkAndSync",
-        "title": "SCWD: Link and Sync"
+        "command": "sc-vsc-webdev.authenticate",
+        "title": "SCWD: Authenticate"
       },
       {
         "command": "sc-vsc-webdev.queryOrg",

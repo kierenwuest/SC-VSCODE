@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import * as path from 'path';
+import * as fs from 'fs';
 import { log, showError, showInfo } from '../outputs';
 import { Mapping, fileDetailsMapping, FileDetails  } from '../types';
 import Queue from 'p-queue';
@@ -56,7 +57,14 @@ async function handleRecords(records: any[], detail: FileDetails, orgAlias: stri
 
         log(`Processing ${detail.objectType} - Sub-directory: ${subDirectory}`);
 
-        const directoryPath = path.join(vscode.workspace.rootPath || '', detail.directory, subDirectory.replace(/\//g, path.sep));
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+            showError("No workspace folder is open. Please open a project folder and try again.");
+            return;
+        }
+        const workspaceFolder = workspaceFolders[0].uri.fsPath;
+
+        const directoryPath = path.join(workspaceFolder, detail.directory, subDirectory.replace(/\//g, path.sep));
         await vscode.workspace.fs.createDirectory(vscode.Uri.file(directoryPath));
 
         const fullPath = path.join(directoryPath, `${record[detail.nameField]}.${detail.extension}`);
@@ -65,7 +73,7 @@ async function handleRecords(records: any[], detail: FileDetails, orgAlias: stri
             await vscode.workspace.fs.writeFile(vscode.Uri.file(fullPath), Buffer.from(record[detail.field]));
             showInfo(`File created: ${fullPath}`);
 
-            await updateSettingsJson(fullPath, detail.objectType, detail.field, record.Id);
+            await updateSettingsJson(fullPath, detail, subDirectory, record.Id);
             WatcherManager.initializeIgnore(fullPath);
             WatcherManager.attach({ localPath: fullPath, salesforceObject: detail.objectType, salesforceField: detail.field, salesforceRecordId: record.Id }, orgAlias);
         } catch (err) {
@@ -74,19 +82,41 @@ async function handleRecords(records: any[], detail: FileDetails, orgAlias: stri
     }
 }
 
-async function updateSettingsJson(localPath: string, objectType: string, field: string, recordId: string) {
+async function updateSettingsJson(localPath: string, detail: FileDetails, subDirectory: string, recordId: string) {
     await updateQueue.add(async () => {
-        const config = vscode.workspace.getConfiguration('storeConnect');
-        let existingMappings = await config.get<Mapping[]>('fileMappings', []);
-        const mappingExists = existingMappings.some(mapping => mapping.localPath === localPath);
-        if (!mappingExists) {
-            const newMapping = { localPath, salesforceObject: objectType, salesforceField: field, salesforceRecordId: recordId };
-            existingMappings.push(newMapping);
-            try {
-                await config.update('fileMappings', existingMappings, vscode.ConfigurationTarget.Workspace);
-            } catch (error) {
-                console.error('Failed to update configuration:', error);
-            }
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+            showError("No workspace folder is open. Please open a project folder and try again.");
+            return;
+        }
+        const workspaceFolder = workspaceFolders[0].uri.fsPath;
+
+        const settingsPath = path.join(workspaceFolder, '.vscode', 'settings.json');
+        const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+
+        // Create the necessary structure if it doesn't exist
+        if (!settings[detail.directory]) {
+            settings[detail.directory] = {};
+        }
+        if (!settings[detail.directory][detail.subDirectory]) {
+            settings[detail.directory][detail.subDirectory] = {};
+        }
+        if (!settings[detail.directory][detail.subDirectory][subDirectory]) {
+            settings[detail.directory][detail.subDirectory][subDirectory] = {};
+        }
+
+        const fileName = path.basename(localPath);
+        settings[detail.directory][detail.subDirectory][subDirectory][fileName] = {
+            localPath,
+            salesforceObject: detail.objectType,
+            salesforceField: detail.field,
+            salesforceRecordId: recordId
+        };
+
+        try {
+            await fs.promises.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+        } catch (error) {
+            console.error('Failed to update settings.json:', error);
         }
     });
 }

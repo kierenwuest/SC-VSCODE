@@ -36,3 +36,13 @@ export const fileDetailsMapping: FileDetails[] = [
   { objectType: 's_c__Theme_Template__c', directory: 'Theme_Templates', subDirectory: 's_c__Theme_Id__r.Name', nameField: 's_c__Key__c', extension: 'liquid', field: 's_c__Content__c' }
 ];
 
+export const baseSettings = (orgAlias: string, workspacePath: string, orgStatus: string ) => ({
+  "storeConnect.orgAlias": orgAlias,
+  "orgWorkfolder.Path": workspacePath,
+  "cliOrgStatus": orgStatus,
+  "Articles": {},
+  "Content_Blocks": {},
+  "Script_Blocks": {},
+  "Style_Blocks": {},
+  "Theme_Templates": {}
+});

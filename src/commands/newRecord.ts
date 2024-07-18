@@ -6,7 +6,7 @@ import { showError, showSuccess } from '../outputs';
 import { fileDetailsMapping, FileDetails } from '../types';
 import { WatcherManager } from '../attachSaveListener';
 
-export const newRecord = vscode.commands.registerCommand('sc-vsc-webdev.newRecord', async (uri: vscode.Uri) => {
+export async function newRecord(uri: vscode.Uri) {
     const filePath = uri.fsPath;
     const fileName = path.basename(filePath);
     const fileExtension = path.extname(fileName).substring(1);
@@ -84,7 +84,7 @@ export const newRecord = vscode.commands.registerCommand('sc-vsc-webdev.newRecor
           showError('An unknown error occurred during record creation.');
       }
   }
-});
+}
 
 async function getThemeId(themeName: string, orgAlias: string): Promise<string> {
     const query = `SELECT Id FROM s_c__Theme__c WHERE Name = '${themeName}' LIMIT 1`;

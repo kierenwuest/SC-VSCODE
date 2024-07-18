@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import { log, showError } from './outputs';
 import { Mapping } from './types';
-import { updateSalesforceRecord } from './salesforceAPI'; 
+import { updateSalesforceRecord } from './salesforceAPI';
+import { newRecord } from './commands/newRecord';
 
 class WatcherManager {
     private static activeWatchers = new Map<string, vscode.Disposable>();
@@ -36,8 +37,24 @@ class WatcherManager {
             }
         };
 
+        const handleFileCreate = async (uri: vscode.Uri) => {
+            if (this.ignoreInitialChange.has(uri.fsPath)) {
+                this.ignoreInitialChange.delete(uri.fsPath);
+                return;
+            }
+
+            const config = vscode.workspace.getConfiguration('storeConnect');
+            const fileMappings = config.get<any[]>('fileMappings', []);
+            const existingMapping = fileMappings.find(mapping => mapping.localPath === uri.fsPath);
+
+            if (!existingMapping) {
+                log(`New file detected: ${uri.fsPath}`);
+                await newRecord(uri); // Trigger newRecord command for new files
+            }
+        };
+
         watcher.onDidChange(handleFileChange);
-        watcher.onDidCreate(handleFileChange);
+        watcher.onDidCreate(handleFileCreate);
         watcher.onDidDelete(uri => {
             if (uri.fsPath === mapping.localPath) {
                 log(`File Deleted: ${uri.fsPath}`);
@@ -51,6 +68,15 @@ class WatcherManager {
 
     public static initializeIgnore(path: string) {
         this.ignoreInitialChange.add(path);
+    }
+
+    public static removeAllWatchers() {
+        this.activeWatchers.forEach((watcher, path) => {
+            watcher.dispose();
+            log(`Watcher disposed for: ${path}`);
+        });
+        this.activeWatchers.clear();
+        this.ignoreInitialChange.clear();
     }
 
     private static dispose(path: string) {
