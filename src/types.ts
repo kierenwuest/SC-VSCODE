@@ -37,7 +37,7 @@ export const fileDetailsMapping: FileDetails[] = [
 ];
 
 export const baseSettings = (orgAlias: string, workspacePath: string, orgStatus: string ) => ({
-  "storeConnect.orgAlias": orgAlias,
+  "SCWDSettings.orgAlias": orgAlias,
   "orgWorkfolder.Path": workspacePath,
   "cliOrgStatus": orgStatus,
   "Articles": {},

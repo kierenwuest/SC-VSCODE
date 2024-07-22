@@ -4,56 +4,55 @@
   "description": "A VSCode extension tailored specifically to enhance the development workflow for StoreConnect CMS themes and website components. This extension will effectively bridge the gap between local development and Salesforce data management by synchronizing changes in VSCode directly to Salesforce records.",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.88.0"
+      "vscode": "^1.88.0"
   },
   "categories": [
-    "Other"
+      "Other"
   ],
   "main": "./dist/extension.js",
+  "activationEvents": [
+    "*"
+  ],
   "scripts": {
-    "vscode:prepublish": "npm run package",
-    "compile": "webpack",
-    "watch": "webpack --watch",
-    "package": "webpack --mode production --devtool hidden-source-map",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "npm run compile-tests && npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
-    "test": "vscode-test"
+      "vscode:prepublish": "npm run package",
+      "compile": "webpack",
+      "watch": "webpack --watch",
+      "package": "webpack --mode production --devtool hidden-source-map",
+      "compile-tests": "tsc -p . --outDir out",
+      "watch-tests": "tsc -p . -w --outDir out",
+      "pretest": "npm run compile-tests && npm run compile && npm run lint",
+      "lint": "eslint src --ext ts",
+      "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/mocha": "^10.0.6",
-    "@types/node": "18.x",
-    "@types/vscode": "^1.88.0",
-    "@typescript-eslint/eslint-plugin": "^7.4.0",
-    "@typescript-eslint/parser": "^7.4.0",
-    "@vscode/test-cli": "^0.0.8",
-    "@vscode/test-electron": "^2.3.9",
-    "eslint": "^8.57.0",
-    "ts-loader": "^9.5.1",
-    "typescript": "^5.3.3",
-    "webpack": "^5.91.0",
-    "webpack-cli": "^5.1.4"
+      "@types/mocha": "^10.0.6",
+      "@types/node": "18.x",
+      "@types/vscode": "^1.88.0",
+      "@typescript-eslint/eslint-plugin": "^7.4.0",
+      "@typescript-eslint/parser": "^7.4.0",
+      "@vscode/test-cli": "^0.0.8",
+      "@vscode/test-electron": "^2.3.9",
+      "eslint": "^8.57.0",
+      "ts-loader": "^9.5.1",
+      "typescript": "^5.3.3",
+      "webpack": "^5.91.0",
+      "webpack-cli": "^5.1.4"
   },
   "contributes": {
-    "commands": [
-      {
-        "command": "sc-vsc-webdev.activateSCWD",
-        "title": "SCWD: Activate or Deactivate"
-      },
-      {
-        "command": "sc-vsc-webdev.authenticate",
-        "title": "SCWD: Authenticate"
-      },
-      {
-        "command": "sc-vsc-webdev.queryOrg",
-        "title": "SCWD: Query Org"
-      },
-      {
-        "command": "sc-vsc-webdev.newRecord",
-        "title": "SCWD: Create As New SC Record"
-      }
-    ],
+      "commands": [
+          {
+              "command": "sc-vsc-webdev.authenticate",
+              "title": "SCWD: Authenticate"
+          },
+          {
+              "command": "sc-vsc-webdev.queryOrg",
+              "title": "SCWD: Query Org"
+          },
+          {
+              "command": "sc-vsc-webdev.newRecord",
+              "title": "SCWD: Create As New SC Record"
+          }
+      ],
     "menus": {
       "explorer/context": [
         {
@@ -64,43 +63,176 @@
       ]
     },
     "configuration": {
-      "title": "StoreConnect Settings",
+      "title": "SCWDSettings",
       "properties": {
-        "storeConnect.orgAlias": {
+        "SCWDSettings.orgAlias": {
           "type": "string",
           "default": "",
           "description": "The Salesforce organization alias used for authentication."
         },
-        "storeConnect.fileMappings": {
-          "type": "array",
-          "default": [],
-          "description": "Maps local files to Salesforce records.",
-          "items": {
+        "orgWorkfolder.Path": {
+          "type": "string",
+          "default": "",
+          "description": "The local path to the working folder."
+        },
+        "cliOrgStatus": {
+          "type": "string",
+          "default": "Disconnected",
+          "description": "The connection status of the Salesforce org via CLI."
+        },
+        "Articles": {
+          "type": "object",
+          "description": "Configuration for Article content.",
+          "additionalProperties": {
             "type": "object",
-            "properties": {
-              "localPath": {
-                "type": "string",
-                "description": "The path to the local file."
-              },
-              "salesforceObject": {
-                "type": "string",
-                "description": "Salesforce object type (e.g., Account, CustomObject__c)."
-              },
-              "salesforceField": {
-                "type": "string",
-                "description": "The field in the Salesforce object to sync data with."
-              },
-              "salesforceRecordId": {
-                "type": "string",
-                "description": "The Salesforce record ID for synchronization."
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "localPath": {
+                    "type": "string",
+                    "description": "The path to the local file."
+                  },
+                  "salesforceObject": {
+                    "type": "string",
+                    "description": "Salesforce object."
+                  },
+                  "salesforceField": {
+                    "type": "string",
+                    "description": "The field in the Salesforce object to sync data with."
+                  },
+                  "salesforceRecordId": {
+                    "type": "string",
+                    "description": "The Salesforce record ID for synchronization."
+                  }
+                }
               }
-            },
-            "required": [
-              "localPath",
-              "salesforceObject",
-              "salesforceField",
-              "salesforceRecordId"
-            ]
+            }
+          }
+        },
+        "Content_Blocks": {
+          "type": "object",
+          "description": "Configuration for Content Block CMS content.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "localPath": {
+                    "type": "string",
+                    "description": "The path to the local file."
+                  },
+                  "salesforceObject": {
+                    "type": "string",
+                    "description": "Salesforce object."
+                  },
+                  "salesforceField": {
+                    "type": "string",
+                    "description": "The field in the Salesforce object to sync data with."
+                  },
+                  "salesforceRecordId": {
+                    "type": "string",
+                    "description": "The Salesforce record ID for synchronization."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "Script_Blocks": {
+          "type": "object",
+          "description": "Configuration for Script Block JS content.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "localPath": {
+                    "type": "string",
+                    "description": "The path to the local file."
+                  },
+                  "salesforceObject": {
+                    "type": "string",
+                    "description": "Salesforce object type."
+                  },
+                  "salesforceField": {
+                    "type": "string",
+                    "description": "The field in the Salesforce object to sync data with."
+                  },
+                  "salesforceRecordId": {
+                    "type": "string",
+                    "description": "The Salesforce record ID for synchronization."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "Style_Blocks": {
+          "type": "object",
+          "description": "Configuration for Style Block CSS content.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "localPath": {
+                    "type": "string",
+                    "description": "The path to the local file."
+                  },
+                  "salesforceObject": {
+                    "type": "string",
+                    "description": "Salesforce object type (e.g., Account, CustomObject__c)."
+                  },
+                  "salesforceField": {
+                    "type": "string",
+                    "description": "The field in the Salesforce object to sync data with."
+                  },
+                  "salesforceRecordId": {
+                    "type": "string",
+                    "description": "The Salesforce record ID for synchronization."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "Theme_Templates": {
+          "type": "object",
+          "description": "Configuration for Theme Template Liquid content.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "localPath": {
+                    "type": "string",
+                    "description": "The path to the local file."
+                  },
+                  "salesforceObject": {
+                    "type": "string",
+                    "description": "Salesforce object type."
+                  },
+                  "salesforceField": {
+                    "type": "string",
+                    "description": "The field in the Salesforce object to sync data with."
+                  },
+                  "salesforceRecordId": {
+                    "type": "string",
+                    "description": "The Salesforce record ID for synchronization."
+                  }
+                }
+              }
+            }
           }
         }
       }

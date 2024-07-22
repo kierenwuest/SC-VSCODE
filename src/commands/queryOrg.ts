@@ -4,13 +4,11 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { log, showError, showInfo } from '../outputs';
 import { Mapping, fileDetailsMapping, FileDetails  } from '../types';
-import Queue from 'p-queue';
-import { WatcherManager } from '../attachSaveListener'; 
-
-const updateQueue = new Queue({ concurrency: 1 });
+import { WatcherManager } from '../fileWatcher';
+import { updateSettingsJson } from '../manageSettingsJson'; 
 
 export async function queryOrg() {
-    const orgAlias = vscode.workspace.getConfiguration('storeConnect').get<string>('orgAlias');
+    const orgAlias = vscode.workspace.getConfiguration('SCWDSettings').get<string>('orgAlias');
     if (!orgAlias) {
         showError('No Salesforce organization alias is configured.');
         return;
@@ -30,7 +28,7 @@ export async function queryOrg() {
             }
             try {
                 const data = JSON.parse(stdout);
-                log(`Query Data: ${JSON.stringify(data, null, 2)}`); // This will log the full structure of the response
+                // log(`Query Data: ${JSON.stringify(data, null, 2)}`); // This will log the full structure of the response
                 if (data.result.records && data.result.records.length > 0) {
                     await handleRecords(data.result.records, detail, orgAlias);
                 } else {
@@ -80,43 +78,4 @@ async function handleRecords(records: any[], detail: FileDetails, orgAlias: stri
             showError(`Failed to write file: ${err instanceof Error ? err.message : String(err)}`);
         }
     }
-}
-
-async function updateSettingsJson(localPath: string, detail: FileDetails, subDirectory: string, recordId: string) {
-    await updateQueue.add(async () => {
-        const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (!workspaceFolders || workspaceFolders.length === 0) {
-            showError("No workspace folder is open. Please open a project folder and try again.");
-            return;
-        }
-        const workspaceFolder = workspaceFolders[0].uri.fsPath;
-
-        const settingsPath = path.join(workspaceFolder, '.vscode', 'settings.json');
-        const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-
-        // Create the necessary structure if it doesn't exist
-        if (!settings[detail.directory]) {
-            settings[detail.directory] = {};
-        }
-        if (!settings[detail.directory][detail.subDirectory]) {
-            settings[detail.directory][detail.subDirectory] = {};
-        }
-        if (!settings[detail.directory][detail.subDirectory][subDirectory]) {
-            settings[detail.directory][detail.subDirectory][subDirectory] = {};
-        }
-
-        const fileName = path.basename(localPath);
-        settings[detail.directory][detail.subDirectory][subDirectory][fileName] = {
-            localPath,
-            salesforceObject: detail.objectType,
-            salesforceField: detail.field,
-            salesforceRecordId: recordId
-        };
-
-        try {
-            await fs.promises.writeFile(settingsPath, JSON.stringify(settings, null, 2));
-        } catch (error) {
-            console.error('Failed to update settings.json:', error);
-        }
-    });
 }

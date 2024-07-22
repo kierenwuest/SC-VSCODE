@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-const outputChannel = vscode.window.createOutputChannel("My Extension Logs");
+const outputChannel = vscode.window.createOutputChannel("SCWD Logs");
 
 export function log(message: string): void {
     outputChannel.appendLine(message);
@@ -28,3 +28,5 @@ export function showSuccess(message: string): void {
     vscode.window.showInformationMessage(message);
     log(message); 
 }
+
+export { outputChannel };

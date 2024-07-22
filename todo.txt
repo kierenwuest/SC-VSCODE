@@ -1,8 +1,0 @@
-Remove log junk
-Activate as a bottom bar icon
-Query Org right click command on folder Update Json
-
-defaut output selection to My Extension Logs
-rename My Extension Logs to SCWD Logs
-
-release plugin

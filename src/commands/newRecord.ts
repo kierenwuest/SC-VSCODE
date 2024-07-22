@@ -3,8 +3,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createSalesforceRecord, querySalesforceRecord } from '../salesforceAPI';
 import { showError, showSuccess } from '../outputs';
-import { fileDetailsMapping, FileDetails } from '../types';
-import { WatcherManager } from '../attachSaveListener';
+import { fileDetailsMapping, FileDetails, Mapping } from '../types';
+import { WatcherManager } from '../fileWatcher';
+import { updateSettingsJson } from '../manageSettingsJson'; 
 
 export async function newRecord(uri: vscode.Uri) {
     const filePath = uri.fsPath;
@@ -36,7 +37,7 @@ export async function newRecord(uri: vscode.Uri) {
     }
 
     const fileContent = fs.readFileSync(filePath, 'utf8');
-    const orgAlias = vscode.workspace.getConfiguration('storeConnect').get<string>('orgAlias');
+    const orgAlias = vscode.workspace.getConfiguration('SCWDSettings').get<string>('orgAlias');
 
     if (!orgAlias) {
         showError('Salesforce Org Alias is not configured.');
@@ -75,6 +76,8 @@ export async function newRecord(uri: vscode.Uri) {
       };
       WatcherManager.attach(mapping, orgAlias);
   
+        // Update settings.json with the new record details
+        await updateSettingsJson(filePath, fileDetails, path.basename(fileDirectory), recordId);
   } catch (error: any) {
       if (error.response && error.response.data) {
           showError(`Failed to create record: ${JSON.stringify(error.response.data)}`);

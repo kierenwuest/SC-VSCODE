@@ -15,7 +15,7 @@ export async function authenticate() {
     const folderName = path.basename(workspaceFolders[0].uri.fsPath);
     const alias = folderName.replace(/\s+/g, '_');
 
-    const orgAlias = vscode.workspace.getConfiguration('storeConnect').get<string>('orgAlias') || alias;
+    const orgAlias = vscode.workspace.getConfiguration('SCWDSettings').get<string>('orgAlias') || alias;
 
     const command = `sfdx force:auth:web:login -a ${orgAlias}`;
     exec(command, (error, stdout, stderr) => {
@@ -29,7 +29,7 @@ export async function authenticate() {
         }
         if (stdout.includes("Successfully authorized")) {
             showInfo(`Authenticated successfully. Org alias set to "${orgAlias}".`);
-            const config = vscode.workspace.getConfiguration('storeConnect');
+            const config = vscode.workspace.getConfiguration('SCWDSettings');
             config.update('orgAlias', orgAlias, vscode.ConfigurationTarget.Workspace)
                 .then(() => log('Org alias saved to workspace settings.'),
                     error => showError('Failed to save org alias to workspace settings: ' + error));
